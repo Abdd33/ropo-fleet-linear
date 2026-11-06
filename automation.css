@@ -82,3 +82,13 @@
   .flow-workspace { transition: grid-template-columns 180ms ease; }
   .flow-wire { transition: stroke 130ms ease, opacity 130ms ease; }
 }
+
+.flow-visual-anchor { fill: var(--wire-result); pointer-events: none; opacity: .85; }
+body.linear-theme .flow-edge.is-linked-highlight .flow-wire,
+body.linear-theme .flow-edge.has-top-anchor.is-selected .flow-wire {
+  stroke: var(--wire-result); stroke-width: 3; opacity: 1;
+}
+.flow-edge:is(.is-linked-highlight, .is-selected) .flow-visual-anchor { r: 4.5px; opacity: 1; }
+.flow-node-result.is-connected .flow-node-port::before { background: color-mix(in srgb, currentColor 42%, var(--surface-1)); }
+.flow-node-result:is(.is-linked-highlight, .is-wire-selected) { background: color-mix(in srgb, var(--result-color) 14%, transparent); }
+.flow-node-result:is(.is-linked-highlight, .is-wire-selected) .flow-node-port::before { background: currentColor; }

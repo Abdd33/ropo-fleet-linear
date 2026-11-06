@@ -109,8 +109,74 @@
     const bend = Math.max(32, Math.min(180, Math.abs(b.x - a.x) * 0.45));
     return `M${a.x},${a.y} C${a.x + bend},${a.y} ${b.x - bend},${b.y} ${b.x},${b.y}`;
   };
-  function edgePath(edge, a, b) {
-    return path(point(a, "output", edge.outcome), point(b, "input"));
+  const routeClearance = 16;
+  const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+  function roundedRoute(points) {
+    let d = `M${points[0].x},${points[0].y}`;
+    for (let i = 1; i < points.length - 1; i++) {
+      const a = points[i - 1], b = points[i], c = points[i + 1];
+      const incoming = distance(a, b), outgoing = distance(b, c);
+      const radius = Math.min(12, incoming / 2, outgoing / 2);
+      if (!radius) continue;
+      const entry = { x: b.x + (a.x - b.x) * radius / incoming, y: b.y + (a.y - b.y) * radius / incoming };
+      const exit = { x: b.x + (c.x - b.x) * radius / outgoing, y: b.y + (c.y - b.y) * radius / outgoing };
+      d += ` L${entry.x},${entry.y} Q${b.x},${b.y} ${exit.x},${exit.y}`;
+    }
+    const end = points.at(-1);
+    return d + ` L${end.x},${end.y}`;
+  }
+  function edgeRoute(edge, source, target, boxes) {
+    const output = point(source, "output", edge.outcome), input = point(target, "input");
+    const normal = { d: path(output, input) };
+    if (edge.outcome === "error" || target.y >= source.y - 42 || input.x >= output.x) return normal;
+
+    // Sample the existing cubic near the source before opting into a top exit.
+    const bend = Math.max(32, Math.min(180, (output.x - input.x) * 0.45));
+    const crowdsSource = [0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75].some(t => {
+      const u = 1 - t;
+      const x = u ** 3 * output.x + 3 * u ** 2 * t * (output.x + bend)
+        + 3 * u * t ** 2 * (input.x - bend) + t ** 3 * input.x;
+      const y = output.y + (input.y - output.y) * (3 * t ** 2 - 2 * t ** 3);
+      return x >= source.x - routeClearance && x <= output.x + routeClearance
+        && y >= source.y && y <= source.y + nodeHeight(source);
+    });
+    if (!crowdsSource) return normal;
+
+    const slot = Math.max(0, outputs(source).findIndex(o => o.key === edge.outcome));
+    const preferred = input.x < source.x ? 0 : input.x > source.x + 165 ? 2 : 1;
+    const offsets = [34, 102, 170];
+    const levels = new Set([source.y - 28 - slot * 12, input.y - 46]);
+    const approaches = new Set([input.x - 30 - slot * 12, input.x - 58]);
+    for (const box of boxes) {
+      if (box.top - 28 < source.y) levels.add(box.top - 28);
+      if (box.bottom + 28 < source.y - routeClearance) levels.add(box.bottom + 28);
+      if (box.left - 28 < input.x) approaches.add(box.left - 28);
+    }
+
+    let best;
+    for (let side = 0; side < offsets.length; side++) {
+      const anchor = { x: source.x + offsets[side] + slot * 14, y: source.y };
+      for (const y of levels) {
+        if (y > source.y - routeClearance || Math.abs(y - input.y) < 16) continue;
+        for (const x of approaches) {
+          if (Math.abs(x - anchor.x) < 16) continue;
+          const points = [anchor, { x: anchor.x, y }, { x, y }, { x, y: input.y }, input];
+          let score = Math.abs(side - preferred) * 16;
+          for (let i = 1; i < points.length; i++) {
+            const a = points[i - 1], b = points[i];
+            score += distance(a, b);
+            for (const box of boxes) {
+              if ((i === 1 && box.id === source.id) || (i === 4 && box.id === target.id)) continue;
+              const pad = routeClearance;
+              if (Math.max(a.x, b.x) > box.left - pad && Math.min(a.x, b.x) < box.right + pad
+                && Math.max(a.y, b.y) > box.top - pad && Math.min(a.y, b.y) < box.bottom + pad) score += 10000;
+            }
+          }
+          if (!best || score < best.score) best = { anchor, points, score };
+        }
+      }
+    }
+    return best ? { d: roundedRoute(best.points), anchor: best.anchor } : normal;
   }
   const issues = () => M.validate(model(), F.state.vehicles);
   function status(text) {
@@ -148,17 +214,21 @@
 
     ${q ? `<label class="flow-node-quick"><span>${h(q.label)} <output>${h(n.config[q.key])}${["threshold", "targetSoc"].includes(q.key) ? "%" : " min"}</output></span><input type="range" data-quick="${h(q.key)}" min="${q.min ?? 1}" max="${q.max ?? 100}" step="${q.step ?? 1}" value="${h(n.config[q.key])}" aria-label="${h(title(n) + " " + q.label)}"></label>` : ""}
     ${n.children ? `<button type="button" class="flow-node-open" data-action="flow-open" data-id="${h(n.id)}">${expanded.has(n.id) ? "收起" : "展开"} ${n.children.nodes.filter((x) => !["stepStart", "stepEnd"].includes(x.kind)).length} 个子步骤 <span>${expanded.has(n.id) ? "⌃" : "⌄"}</span></button>` : ""}
-    <div class="flow-node-results">${outputs(n).map((o) => `<div class="flow-node-result" style="--result-color:${o.color || k.color}"><span>${h(o.label)}</span><button type="button" class="flow-node-port output" data-port="output" data-outcome="${h(o.key)}" style="top:${outputY(n, o.key) - 13}px" aria-label="${h(title(n) + " " + o.label + " 输出端口")}"></button></div>`).join("")}</div>${inlineHTML(n)}</div>`;
+    <div class="flow-node-results">${outputs(n).map((o) => `<div class="flow-node-result" data-result="${h(o.key)}" style="--result-color:${o.color || k.color}"><span>${h(o.label)}</span><button type="button" class="flow-node-port output" data-port="output" data-outcome="${h(o.key)}" style="top:${outputY(n, o.key) - 13}px" aria-label="${h(title(n) + " " + o.label + " 输出端口")}"></button></div>`).join("")}</div>${inlineHTML(n)}</div>`;
   }
   function wires() {
-    const g = graph();
+    const g = graph(), pos = groupPosition();
+    const boxes = g.nodes.map(n => ({ id: n.id, left: n.x, top: n.y, right: n.x + 248, bottom: n.y + nodeHeight(n) }));
+    boxes.push({ left: pos.x, top: pos.y, right: pos.x + groupSize.width, bottom: pos.y + groupSize.height });
     return `<svg class="flow-wires" width="2400" height="1800" viewBox="0 0 2400 1800"><defs><marker id="flow-arrow-v2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L8 4L0 8Z" fill="context-stroke"/></marker></defs>${g.edges.map((e) => {
       const originalA = g.nodes.find((n) => n.id === e.from), originalB = g.nodes.find((n) => n.id === e.to);
       const a = originalA && displayNode(originalA), b = originalB && displayNode(originalB);
       if (!a || !b) return "";
       if (scope === "root" && !showExceptions && e.outcome === "error" && e.id !== selectedEdge && a.id !== selectedId && b.id !== selectedId) return "";
-      const o = outputs(a).find((o2) => o2.key === e.outcome), d = edgePath(e, a, b);
-      return `<g class="flow-edge ${selectedEdge === e.id ? "is-selected" : ""}"><path class="flow-wire" d="${d}" stroke="${o?.color || spec(a).color}" marker-end="url(#flow-arrow-v2)"/><path class="flow-wire-hit" data-edge="${h(e.id)}" d="${d}" role="button" tabindex="0" aria-label="选择连线 ${h(title(a) + " " + (o?.label || "") + " 到 " + title(b))}"/></g>`;
+      const o = outputs(a).find(o => o.key === e.outcome);
+      const { d, anchor } = edgeRoute(e, a, b, boxes);
+      const color = o?.color || spec(a).color, relation = `${o?.label || e.outcome} → ${title(b)}`;
+      return `<g class="flow-edge ${anchor ? "has-top-anchor" : ""}" data-source="${h(e.from)}" data-result-key="${h(e.outcome)}" style="--wire-result:${color}"><path class="flow-wire" d="${d}" stroke="${color}" marker-end="url(#flow-arrow-v2)"/>${anchor ? `<circle class="flow-visual-anchor" cx="${anchor.x}" cy="${anchor.y}" r="3.4"/>` : ""}<path class="flow-wire-hit" data-edge="${h(e.id)}" d="${d}" role="button" tabindex="0" aria-label="选择连线 ${h(title(a) + " " + (o?.label || "") + " 到 " + title(b))}"><title>${h(relation)}</title></path></g>`;
     }).join("")}<path class="flow-wire-preview" style="display:none"/></svg>`;
   }
   function draw() {
@@ -169,23 +239,33 @@
     scope = editingScope;
     applyView();
     updateValidation();
+    for (const hit of stage.querySelectorAll("[data-edge]")) {
+      const row = resultRow(hit.parentElement);
+      if (!row) continue;
+      row.classList.add("is-connected");
+      row.title = hit.querySelector("title").textContent;
+    }
     updateEdgeSelection();
     const undoButton = root.querySelector(".flow-undo-delete");
     undoButton.hidden = !undo || undo.scope !== scope;
     undoButton.textContent = undo?.edge ? "↶ 撤销断开" : "↶ 撤销删除";
     previewLink();
   }
+  function resultRow(wire) {
+    return stage.querySelector(`[data-node="${CSS.escape(wire.dataset.source)}"] [data-result="${CSS.escape(wire.dataset.resultKey)}"]`);
+  }
   function updateEdgeSelection() {
     stage.querySelectorAll("[data-edge]").forEach(hit => {
       const active = hit.dataset.edge === selectedEdge;
       hit.parentElement.classList.toggle("is-selected", active);
+      resultRow(hit.parentElement)?.classList.toggle("is-wire-selected", active);
       hit.setAttribute("aria-pressed", String(active));
     });
     const toolbar = root.querySelector(".flow-link-toolbar"), edge = graph().edges.find((e) => e.id === selectedEdge);
     toolbar.hidden = !edge;
     if (edge) {
       const a = graph().nodes.find((n) => n.id === edge.from), b = graph().nodes.find((n) => n.id === edge.to);
-      toolbar.querySelector("span").textContent = `${title(a)} → ${title(b)}`;
+      toolbar.querySelector("span").textContent = `${outputs(a).find(o => o.key === edge.outcome)?.label || edge.outcome} → ${title(b)}`;
     }
 
   }
@@ -563,6 +643,19 @@
   }
   function bindCanvas(signal) {
     let suppressed = null;
+    function highlightWire(target, active) {
+      const row = target.closest("[data-result]");
+      const wire = target.closest(".flow-edge") || (row && stage.querySelector(
+        `.flow-edge[data-source="${CSS.escape(row.closest("[data-node]").dataset.node)}"][data-result-key="${CSS.escape(row.dataset.result)}"]`
+      ));
+      if (!wire) return;
+      wire.classList.toggle("is-linked-highlight", active);
+      resultRow(wire)?.classList.toggle("is-linked-highlight", active);
+    }
+    for (const [enter, leave] of [["pointerover", "pointerout"], ["focusin", "focusout"]]) {
+      stage.addEventListener(enter, event => highlightWire(event.target, true), { signal });
+      stage.addEventListener(leave, event => highlightWire(event.target, false), { signal });
+    }
     const inCanvas = (e) => {
       const r = canvas.getBoundingClientRect();
       return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
