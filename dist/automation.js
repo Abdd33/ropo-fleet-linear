@@ -3,6 +3,51 @@
   "use strict";
   const F = window.Fleet, M = window.FleetAutomationModel, h = F.h;
   const MAIN = ["prepare", "operate", "charge", "close"];
+  // Lucide workflow icons. See LUCIDE-LICENSE.txt.
+  const flowIconShapes = {
+    prepare: `
+      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="m9 14 2 2 4-4" />
+    `,
+    operate: `
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    `,
+    charge: `
+      <path d="m11 7-3 5h4l-3 5" />
+      <path d="M14.856 6H16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.935" />
+      <path d="M22 14v-4" />
+      <path d="M5.14 18H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2.936" />
+    `,
+    close: `
+      <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
+      <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    `,
+    trigger: `
+      <path d="M9 9.003a1 1 0 0 1 1.517-.859l4.997 2.997a1 1 0 0 1 0 1.718l-4.997 2.997A1 1 0 0 1 9 14.996z" />
+      <circle cx="12" cy="12" r="10" />
+    `,
+    decide: `
+      <path d="M15 6a9 9 0 0 0-9 9V3" />
+      <circle cx="18" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+    `,
+    manual: `
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    `,
+    end: `
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+    `,
+  };
+  function flowIcon(kind) {
+    const shape = flowIconShapes[kind];
+    if (!shape) return M.catalog[kind]?.icon || "◇";
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shape}</svg>`;
+  }
   let root, canvas, stage, observer, controller, scope = "root", selectedId = null;
   let view = { x: 30, y: 65, scale: 0.8 }, views = {}, drag = null, pending = null, selectedEdge = null, undo = null;
   let showExceptions = false, spaceHeld = false;
@@ -80,7 +125,7 @@
     const k = spec(n), q = quickField(n);
     return `<div class="flow-node ${selectedId === n.id ? "is-selected" : ""}" role="group" tabindex="${ghost ? -1 : 0}" data-node="${h(n.id)}" aria-label="${h(title(n))}，可拖动" style="left:${n.x}px;top:${n.y}px;height:${nodeHeight(n)}px;--node-color:${k.color}">
     ${n.kind !== "trigger" && n.kind !== "stepStart" ? `<button type="button" class="flow-node-port input" data-port="input" style="top:19px" aria-label="${h(title(n))} 输入端口"></button>` : ""}
-    <div class="flow-node-header"><i>${k.icon || "◇"}</i><span><b>${h(title(n))}</b></span></div>
+    <div class="flow-node-header"><i>${flowIcon(n.kind)}</i><span><b>${h(title(n))}</b></span></div>
 
     ${q ? `<label class="flow-node-quick"><span>${h(q.label)} <output>${h(n.config[q.key])}${["threshold", "targetSoc"].includes(q.key) ? "%" : " min"}</output></span><input type="range" data-quick="${h(q.key)}" min="${q.min ?? 1}" max="${q.max ?? 100}" step="${q.step ?? 1}" value="${h(n.config[q.key])}" aria-label="${h(title(n) + " " + q.label)}"></label>` : ""}
     ${n.children ? `<button type="button" class="flow-node-open" data-action="flow-open" data-id="${h(n.id)}">${expanded.has(n.id) ? "收起" : "展开"} ${n.children.nodes.filter((x) => !["stepStart", "stepEnd"].includes(x.kind)).length} 个子步骤 <span>${expanded.has(n.id) ? "⌃" : "⌄"}</span></button>` : ""}
@@ -222,7 +267,7 @@
     const groups = scope === "root" ? [["业务阶段", list.filter((k) => MAIN.includes(k))], ["触发与控制", list.filter((k) => !MAIN.includes(k))]] : [["可用子步骤", list.filter((k) => !["stepStart", "stepEnd"].includes(k))], ["阶段边界", list.filter((k) => ["stepStart", "stepEnd"].includes(k))]];
     return `<h3>${scope === "root" ? "流程组件" : "阶段子步骤"}</h3><input class="flow-palette-search" aria-label="搜索流程组件" placeholder="搜索组件…">${groups.filter((x) => x[1].length).map(([name, ks]) => `<div class="flow-palette-group"><h4>${name}</h4><div>${ks.map((kind) => {
       const s = M.catalog[kind];
-      return `<button type="button" class="flow-palette-item" data-action="flow-add" data-kind="${kind}" aria-label="添加${h(s.title)}"><i style="color:${s.color};background:${s.color}18">${s.icon || "◇"}</i><span>${h(s.title)}</span><b>+</b></button>`;
+      return `<button type="button" class="flow-palette-item" data-action="flow-add" data-kind="${kind}" aria-label="添加${h(s.title)}"><i style="color:${s.color};background:${s.color}18">${flowIcon(kind)}</i><span>${h(s.title)}</span><b>+</b></button>`;
     }).join("")}</div></div>`).join("")}`;
   }
   function assignmentHTML() {
