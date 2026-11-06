@@ -80,17 +80,20 @@ function taskNote(p,phase){
   if(p.type==='回场补能')return p.id==='S-1023-028'?'路线已下发 · 预定桩位 #04':'补能泊位已预留';
   return '按计划执行';
 }
+function taskDescription(p, phase) {
+  return [p.id, p.type, `${p.start}–${p.end}`, p.vehicleId, phaseLabels[phase], taskNote(p, phase)].join(' · ');
+}
 function taskCard(p,lane=0){
   const phase=phaseFor(p),left=(Math.max(planStart(p),scheduleAxis.start)-scheduleAxis.start)/scheduleAxis.span*100;
   const width=(Math.min(planEnd(p),scheduleAxis.end)-Math.max(planStart(p),scheduleAxis.start))/scheduleAxis.span*100;
   const note=taskNote(p,phase);
-  return `<button class="dispatch-task ${cardTheme(p,phase)} ${p.id===F.state.selectedPlan?'is-selected':''}" data-action="schedule-select" data-id="${h(p.id)}" data-phase="${phase}" style="left:${left}%;width:${Math.max(.2,width)}%;top:${18+lane*94}px" aria-label="${h(p.vehicleId+' '+planTitle(p)+' '+p.start+' 至 '+p.end)}" title="${h(p.id+' · '+planTitle(p)+' · '+p.start+'–'+p.end)}"><span class="dispatch-task-top"><span class="task-phase">${phaseLabels[phase]}</span><time>${h(p.start)}–${h(p.end)}</time></span><strong>${p.type==='回场补能'?'ϟ':p.type==='停运检修'?'⚙':'◉'} ${h(planTitle(p))}</strong><small class="task-note">${h(note)}</small></button>`;
+  return `<button class="dispatch-task ${cardTheme(p,phase)} ${p.id===F.state.selectedPlan?'is-selected':''}" data-action="schedule-select" data-id="${h(p.id)}" data-phase="${phase}" data-tooltip="${h(taskDescription(p,phase))}" style="left:${left}%;width:${Math.max(.2,width)}%;--lane:${lane}" aria-label="${h(p.vehicleId+' '+planTitle(p)+' '+p.start+' 至 '+p.end+' · '+phaseLabels[phase])}" title="${h(p.id+' · '+planTitle(p)+' · '+p.start+'–'+p.end)}"><span class="dispatch-task-top"><span class="task-phase">${phaseLabels[phase]}</span><time>${h(p.start)}–${h(p.end)}</time></span><strong>${p.type==='回场补能'?'ϟ':p.type==='停运检修'?'⚙':'◉'} ${h(planTitle(p))}</strong><small class="task-note">${h(note)}</small></button>`;
 }
 function vehicleCell(v,selected,plans){
-  const offline=['offline','maintenance'].includes(v.status),stateLabel=selected?'当前选中':offline?'离线维护':v.id==='RT-008'&&v.status==='running'?'载客中':F.status[v.status]?.[0]||v.status;
+  const offline=['offline','maintenance'].includes(v.status),stateLabel=offline?'离线维护':v.id==='RT-008'&&v.status==='running'?'载客中':F.status[v.status]?.[0]||v.status;
   const delayed=plans.find(p=>p.delayMinutes&&p.status==='running');
   const hint=offline?'传感器离线':v.status==='charging'?(v.id==='RT-041'?'2号充电站 · 桩02':'补能充电中'):v.soc<35?'需补能':delayed?`延后 ${delayed.delayMinutes} min`:v.location||'张江园区';
-  return `<button type="button" class="dispatch-vehicle" data-action="schedule-vehicle" data-id="${h(v.id)}" aria-label="选择车辆 ${h(v.id)}" aria-pressed="${selected}" title="选择车辆及当前时点计划"><span class="dispatch-vehicle-top"><strong>${h(v.id)}</strong><span class="vehicle-state ${selected?'selected':offline?'offline':v.status}">${h(stateLabel)}</span>${v.id==='RT-008'?'<span class="passengers">♟ 2</span>':''}<b class="soc ${offline?'offline':v.status==='charging'?'charging':v.soc<35?'low':''}">${offline?'--':v.soc+'%'}</b></span><span class="dispatch-vehicle-meta"><span>${h(v.plate)}${offline?' · 维保厂区':''}</span><span class="vehicle-hint ${offline||delayed?'red':v.soc<35&&v.status!=='charging'?'amber':''}">${h(hint)}</span></span><span class="vehicle-battery ${offline?'offline':v.status==='charging'?'charging':v.soc<35?'low':''}"><i style="width:${offline?100:v.soc}%"></i></span></button>`;
+  return `<button type="button" class="dispatch-vehicle" data-action="schedule-vehicle" data-id="${h(v.id)}" aria-label="选择车辆 ${h(v.id)}" aria-pressed="${selected}" data-tooltip="${h([v.id,v.plate,stateLabel,offline?'SOC --':'SOC '+v.soc+'%',v.location,hint].filter(Boolean).join(' · '))}" title="选择车辆及当前时点计划"><span class="dispatch-vehicle-top"><strong>${h(v.id)}</strong><span class="vehicle-state ${selected?'selected':offline?'offline':v.status}"><span class="vehicle-standard-state">${h(selected?'当前选中':stateLabel)}</span><span class="vehicle-compact-state">${h(stateLabel)}</span></span>${v.id==='RT-008'?'<span class="passengers">♟ 2</span>':''}<b class="soc ${offline?'offline':v.status==='charging'?'charging':v.soc<35?'low':''}">${offline?'--':v.soc+'%'}</b></span><span class="dispatch-vehicle-meta"><span>${h(v.plate)}${offline?' · 维保厂区':''}</span><span class="vehicle-hint ${offline||delayed?'red':v.soc<35&&v.status!=='charging'?'amber':''}">${h(hint)}</span></span><span class="vehicle-battery ${offline?'offline':v.status==='charging'?'charging':v.soc<35?'low':''}"><i style="width:${offline?100:v.soc}%"></i></span></button>`;
 }
 function inspector(){
   const p=filteredPlans().find(p=>p.id===F.state.selectedPlan);if(!p)return '<aside class="plan-inspector"><div class="empty-state">选择计划查看详情</div></aside>';
@@ -107,7 +110,7 @@ function timelineMarkup(list){
     const plans=groups.get(id).sort((a,b)=>planStart(a)-planStart(b)),lanes=[],placements=[];
     plans.forEach(p=>{let lane=lanes.findIndex(end=>end<=planStart(p));if(lane<0)lane=lanes.length;lanes[lane]=planEnd(p);placements.push([p,lane]);});
     const active=plans.some(p=>p.id===F.state.selectedPlan);
-    return `<div class="dispatch-row ${active?'is-selected':''}" style="height:${Math.max(124,lanes.length*94+30)}px">${vehicleCell(car(id),active,plans)}<div class="dispatch-track">${placements.map(([p,lane])=>taskCard(p,lane)).join('')}</div></div>`;
+    return `<div class="dispatch-row ${active?'is-selected':''}" style="--lanes:${lanes.length}">${vehicleCell(car(id),active,plans)}<div class="dispatch-track">${placements.map(([p,lane])=>taskCard(p,lane)).join('')}</div></div>`;
   }).join('');
   return `<div class="dispatch-scroll"><div class="dispatch-grid" style="--track-width:${scheduleAxis.width}px;--grid-step:${scheduleAxis.step/scheduleAxis.span*100}%"><div class="dispatch-heading"><div class="dispatch-vehicle-heading">${F.icon('vehicles',17)} 受控编排车辆 <small>SOC / 状态</small></div><div class="dispatch-hours">${ticks.map((t,index)=>`<span class="${index===0?'first':index===ticks.length-1?'last':''}" style="left:${(t-scheduleAxis.start)/scheduleAxis.span*100}%">${scheduleRange==='today'?clockText(t):new Date(t*60000).toISOString().slice(5,10)+' '+clockText(t)}</span>`).join('')}</div></div>${rows||'<div class="schedule-empty"><h3>没有匹配的排班</h3><button class="btn primary" data-action="schedule-refresh">清除筛选</button></div>'}<div class="dispatch-grid-spacer"></div><div class="dispatch-cursor" role="slider" tabindex="0" aria-label="拖动时间游标" aria-orientation="horizontal"><span class="cursor-label"><i></i><b></b></span><span class="cursor-line"></span></div></div></div>`;
 }
@@ -125,10 +128,17 @@ function updateCursor(){
   }
 }
 function updateTimePreview(){
-  updateCursor();scheduleRoot.querySelectorAll('.dispatch-task').forEach(el=>{const p=F.state.plans.find(p=>p.id===el.dataset.id);if(!p)return;const phase=phaseFor(p);el.className=`dispatch-task ${cardTheme(p,phase)} ${p.id===F.state.selectedPlan?'is-selected':''}`;el.dataset.phase=phase;el.querySelector('.task-phase').textContent=phaseLabels[phase];const note=el.querySelector('.task-note');note.textContent=taskNote(p,phase);});
+  updateCursor();scheduleRoot.querySelectorAll('.dispatch-task').forEach(el=>{const p=F.state.plans.find(p=>p.id===el.dataset.id);if(!p)return;const phase=phaseFor(p);el.className=`dispatch-task ${cardTheme(p,phase)} ${p.id===F.state.selectedPlan?'is-selected':''}`;el.dataset.phase=phase;el.dataset.tooltip=taskDescription(p,phase);el.setAttribute('aria-label',`${p.vehicleId} ${planTitle(p)} ${p.start} 至 ${p.end} · ${phaseLabels[phase]}`);el.querySelector('.task-phase').textContent=phaseLabels[phase];const note=el.querySelector('.task-note');note.textContent=taskNote(p,phase);});
   const panel=scheduleRoot.querySelector('.plan-inspector');if(panel&&inspectorOpen)panel.outerHTML=inspector();const footer=scheduleRoot.querySelector('.schedule-foot');if(footer)footer.innerHTML=summaryMarkup(filteredPlans());
 }
 function saveCursor(){F.state.scheduleCursor={date:scheduleDate,range:scheduleRange,minute:cursorMinute};F.save();}
+const densityKey = 'ropo-fleet-linear-schedule-density';
+function savedScheduleDensity() {
+  try { return localStorage.getItem(densityKey) === 'compact' ? 'compact' : 'standard'; }
+  catch { return 'standard'; }
+}
+let scheduleDensity = savedScheduleDensity();
+
 function mountSchedule(root){
   scheduleRoot=root;const controller=new AbortController(),signal=controller.signal;
   updateCursor();
@@ -142,11 +152,85 @@ function mountSchedule(root){
       if('date' in patch)scheduleDate=patch.date;if('range' in patch)scheduleRange=patch.range;
       if('type' in patch)scheduleType=patch.type;if('status' in patch)scheduleStatus=patch.status;
       if('query' in patch)scheduleQuery=patch.query;if('view' in patch)scheduleView=patch.view;
+      densityControl.hidden = scheduleView !== 'timeline';
+      hideTooltip();
       if('date' in patch||'range' in patch||patch.resetTime){cursorMinute=620;saveCursor();}
-      root.querySelector('#schedule-content').innerHTML=scheduleContents();updateCursor();
+      root.querySelector('#schedule-content').innerHTML=scheduleContents();applyDensity();updateCursor();
       const scroller=root.querySelector('.dispatch-scroll');if(scroller&&!patch.resetTime)scroller.scrollLeft=scroll;
     }
   });
+  const densityControl = document.createElement('div');
+  densityControl.className = 'segmented schedule-density';
+  densityControl.setAttribute('role', 'group');
+  densityControl.setAttribute('aria-label', '时间轴密度');
+  densityControl.innerHTML = '<button type="button" data-density="standard">标准</button><button type="button" data-density="compact">缩略</button>';
+  root.querySelector('.fleet-schedule-toolbar .fleet-toolbar-group').append(densityControl);
+  densityControl.hidden = scheduleView !== 'timeline';
+  function applyDensity() {
+    root.querySelector('.plans-page').classList.toggle('schedule-compact', scheduleDensity === 'compact');
+    root.querySelectorAll('[data-tooltip]').forEach(target => {
+      if (target.hasAttribute('title')) target.dataset.standardTitle = target.title;
+      if (scheduleDensity === 'compact') target.removeAttribute('title');
+      else if (target.dataset.standardTitle) target.title = target.dataset.standardTitle;
+    });
+    densityControl.querySelectorAll('button').forEach(button => {
+      const active = button.dataset.density === scheduleDensity;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  }
+  densityControl.addEventListener('click', event => {
+    const button = event.target.closest('button[data-density]');
+    if (!button || button.dataset.density === scheduleDensity) return;
+    const scroller = root.querySelector('.dispatch-scroll');
+    const scrollLeft = scroller?.scrollLeft;
+    scheduleDensity = button.dataset.density;
+    try { localStorage.setItem(densityKey, scheduleDensity); } catch {}
+    hideTooltip();
+    applyDensity();
+    if (scroller) scroller.scrollLeft = scrollLeft;
+    updateCursor();
+  }, {signal});
+  applyDensity();
+  updateCursor();
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'schedule-tooltip';
+  tooltip.id = 'schedule-density-tooltip';
+  tooltip.setAttribute('role', 'tooltip');
+  tooltip.hidden = true;
+  document.body.append(tooltip);
+  let tooltipTarget;
+  function hideTooltip() {
+    tooltipTarget?.removeAttribute('aria-describedby');
+    tooltipTarget = null;
+    tooltip.hidden = true;
+  }
+  function showTooltip(event) {
+    if (scheduleDensity !== 'compact' || cursorDrag) return;
+    const target = event.target.closest('[data-tooltip]');
+    if (!target || target === tooltipTarget) return;
+    hideTooltip();
+    tooltipTarget = target;
+    target.setAttribute('aria-describedby', tooltip.id);
+    tooltip.textContent = target.dataset.tooltip;
+    tooltip.hidden = false;
+    const rect = target.getBoundingClientRect();
+    tooltip.style.left = Math.max(8, Math.min(rect.left, innerWidth - tooltip.offsetWidth - 8)) + 'px';
+    tooltip.style.top = (rect.bottom + tooltip.offsetHeight + 8 < innerHeight
+      ? rect.bottom + 5 : Math.max(8, rect.top - tooltip.offsetHeight - 5)) + 'px';
+  }
+  root.addEventListener('pointerover', showTooltip, {signal});
+  root.addEventListener('focusin', showTooltip, {signal});
+  root.addEventListener('pointerout', event => {
+    if (tooltipTarget?.contains(event.target) && !tooltipTarget.contains(event.relatedTarget)
+      && !tooltipTarget.matches(':focus-visible')) hideTooltip();
+  }, {signal});
+  root.addEventListener('focusout', hideTooltip, {signal});
+  root.addEventListener('scroll', hideTooltip, {capture:true, signal});
+  window.addEventListener('scroll', hideTooltip, {signal});
+  window.addEventListener('resize', hideTooltip, {signal});
+  root.addEventListener('keydown', event => { if (event.key === 'Escape') hideTooltip(); }, {signal});
   const moveCursor=e=>{const hours=root.querySelector('.dispatch-hours');if(!hours)return;const rect=hours.getBoundingClientRect(),ratio=Math.max(0,Math.min(1,(e.clientX-cursorDrag.offset-rect.left)/rect.width));cursorMinute=Math.round((scheduleAxis.start-dayMinute(scheduleDate)+ratio*scheduleAxis.span)/5)*5;updateTimePreview();};
   const stop=(e,cancel=false)=>{const d=cursorDrag;if(!d||e?.pointerId!=null&&e.pointerId!==d.pointerId)return;cursorDrag=null;if(d.el.hasPointerCapture(d.pointerId))d.el.releasePointerCapture(d.pointerId);d.el.classList.remove('is-dragging');if(cancel){cursorMinute=d.minute;updateTimePreview();}else saveCursor();};
   root.addEventListener('pointerdown',e=>{const el=e.target.closest('.dispatch-cursor');if(!el||e.button!==0||!e.isPrimary)return;const hours=root.querySelector('.dispatch-hours').getBoundingClientRect();cursorDrag={el,pointerId:e.pointerId,minute:cursorMinute,offset:e.clientX-hours.left-(cursorAbsolute()-scheduleAxis.start)/scheduleAxis.span*hours.width};el.setPointerCapture(e.pointerId);el.classList.add('is-dragging');el.focus({preventScroll:true});e.preventDefault();},{signal});
@@ -155,14 +239,16 @@ function mountSchedule(root){
   root.addEventListener('keydown',e=>{if(!e.target.closest('.dispatch-cursor'))return;const step=e.shiftKey?15:5,min=scheduleAxis.start-dayMinute(scheduleDate),max=scheduleAxis.end-dayMinute(scheduleDate);if(e.key==='Escape'){stop(null,true);return;}if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();cursorMinute=e.key==='Home'?min:e.key==='End'?max:Math.max(min,Math.min(max,cursorMinute+(e.key==='ArrowRight'?step:-step)));updateTimePreview();saveCursor();},{signal});
   window.addEventListener('blur',()=>stop(null,true),{signal});
   const observer=typeof ResizeObserver!=='undefined'?new ResizeObserver(()=>updateCursor()):null;observer?.observe(root);
-  F.cleanup=()=>{stop(null,true);controller.abort();observer?.disconnect();disposeControls();scheduleRoot=null;};
+  F.cleanup=()=>{stop(null,true);controller.abort();observer?.disconnect();disposeControls();tooltip.remove();scheduleRoot=null;};
 }
 function selectSchedulePlan(id,vehicleId){
   const scroll=scheduleRoot?.querySelector('.dispatch-scroll')?.scrollLeft||0;
   inspectorOpen=true;
   selectPlan(id);F.render();
   const scroller=scheduleRoot?.querySelector('.dispatch-scroll');if(scroller)scroller.scrollLeft=scroll;
-  if(vehicleId){const button=[...scheduleRoot.querySelectorAll('[data-action="schedule-vehicle"]')].find(el=>el.dataset.id===vehicleId);button?.focus({preventScroll:true});}
+  const action = vehicleId ? 'schedule-vehicle' : 'schedule-select';
+  const focused = [...scheduleRoot.querySelectorAll(`[data-action="${action}"]`)].find(el => el.dataset.id === (vehicleId || id));
+  focused?.focus({preventScroll:true});
 }
 function selectScheduleVehicle(vehicleId){
   const selected=F.state.plans.find(p=>p.id===F.state.selectedPlan);
@@ -183,7 +269,7 @@ F.pages.plans={
   render(){
     if(F.state.justCreated){const p=F.plan();scheduleDate=p.date||'2026-10-23';scheduleQuery='';scheduleType=scheduleStatus='all';scheduleRange='today';cursorMinute=620;F.state.justCreated=false;}
     const stored=F.state.scheduleCursor;if(stored?.date===scheduleDate&&stored.range===scheduleRange&&Number.isFinite(stored.minute))cursorMinute=stored.minute;
-    return `<section class="plans-page"><div id="schedule-controls"></div><div id="schedule-content">${scheduleContents()}</div></section>`;
+    return `<section class="plans-page ${scheduleDensity==='compact'?'schedule-compact':''}"><div id="schedule-controls"></div><div id="schedule-content">${scheduleContents()}</div></section>`;
   },mount:mountSchedule,
   action(a,b){
     if(commonActions(a,b))return;
