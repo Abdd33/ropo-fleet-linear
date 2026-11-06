@@ -1,0 +1,334 @@
+/* Linear app theme. Geometry, positioning and interaction hit targets remain in original CSS. */
+body.linear-theme {
+  --surface-0:#010102;--surface-1:#0f1011;--surface-2:#141516;--surface-3:#191a1b;
+  --border:#23252a;--border-strong:#34343a;--ink:#f7f8f8;--ink-secondary:#d0d6e0;--ink-muted:#8a8f98;
+  --accent:#5e6ad2;--accent-hover:#828fff;--accent-tint:#5e6ad21a;
+  --success:#70c492;--success-bg:#12251b;--warning:#d9b46b;--warning-bg:#292318;
+  --error:#f07885;--error-bg:#2c1b20;--info:#8bb4eb;--info-bg:#172330;
+  --charge:#b7a0d8;--charge-bg:#25202e;--green:var(--success);--amber:var(--warning);--red:var(--error);--purple:var(--charge);
+  scrollbar-color:var(--border-strong) var(--surface-1);
+}
+body.linear-theme :is(.page-head h1,.vehicle-heading h1,.flow-page-head h1,.create-page h1) {font-size:28px;font-weight:600;letter-spacing:-.6px}
+body.linear-theme :is(.page-head,.vehicle-heading,.flow-page-head) {margin-bottom:24px}
+body.linear-theme :is(h2,h3) {font-weight:500}
+body.linear-theme .page-head p {color:var(--ink-muted)}
+body.linear-theme :is(input,select,textarea) {accent-color:var(--accent)}
+body.linear-theme :is(.btn.subtle,.btn.outline) {background:var(--surface-2);border-color:var(--border-strong)}
+body.linear-theme .btn.danger {background:#ae3b4a;border-color:#ae3b4a;color:#fff}
+body.linear-theme .btn.danger:hover {background:#c74859}
+body.linear-theme .btn:disabled {transform:none;opacity:.4}
+body.linear-theme .context-help {color:var(--ink-muted)}
+body.linear-theme .context-help:hover {background:var(--surface-3);color:var(--ink)}
+body.linear-theme .context-help>span {color:var(--ink-muted)}
+body.linear-theme .blue {color:var(--info)}
+body.linear-theme .green {color:var(--success)}
+body.linear-theme .purple {color:var(--charge)}
+body.linear-theme .red {color:var(--error)}
+body.linear-theme .amber {color:var(--warning)}
+body.linear-theme .progress {background:var(--border)}
+body.linear-theme :is(.tabs,.detail-tabs .tabs) {background:var(--surface-1);border-color:var(--border)}
+body.linear-theme .tabs button {background:transparent;color:var(--ink-muted);min-height:36px;border-radius:6px}
+body.linear-theme .tabs button.active {background:var(--surface-3);color:var(--ink);box-shadow:inset 0 -2px var(--accent)}
+body.linear-theme :is(.notice-list button,.help-grid kbd,.profile-card .avatar) {background:var(--surface-3);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .notice-list button:hover {background:#23252a}
+body.linear-theme .demo-note {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-muted)}
+body.linear-theme #toast {background:var(--success-bg);color:var(--success);border-color:#35583f;box-shadow:0 8px 24px #0004}
+body.linear-theme #toast.warning {background:var(--warning-bg);color:var(--warning);border-color:#675438}
+body.linear-theme #toast.error {background:var(--error-bg);color:var(--error);border-color:#66353e}
+body.linear-theme :is(.dialog-actions,.field-grid,.help-grid) {border-color:var(--border)}
+
+/* Vehicles: the existing grid, filters, selection and list view. */
+body.linear-theme .vehicle-summary {background:transparent;padding:0}
+body.linear-theme .vehicle-summary>span {color:var(--ink-muted)}
+body.linear-theme .vehicle-summary b {color:var(--ink-secondary);font-weight:500}
+body.linear-theme :is(.vehicle-toolbar,.vehicle-footer) {background:var(--surface-1);border-color:var(--border);border-radius:10px}
+body.linear-theme .vehicle-toolbar {border-radius:12px 12px 0 0;padding:16px}
+body.linear-theme .vehicle-results {background:var(--surface-0);border-color:var(--border);border-radius:0 0 12px 12px}
+body.linear-theme .vehicle-card {background:var(--surface-1);border-color:var(--border-strong);border-radius:10px;box-shadow:none}
+body.linear-theme .vehicle-card:hover {background:var(--surface-2);border-color:#62666d;box-shadow:none;transform:none}
+body.linear-theme .vehicle-card.is-selected {background:var(--surface-2);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+body.linear-theme .vehicle-card-title strong {color:var(--ink);font-weight:500}
+body.linear-theme :is(.vehicle-card-plate,.vehicle-card-data>span) {color:var(--ink-muted)}
+body.linear-theme .vehicle-card-data>b {color:var(--ink-secondary);font-weight:500}
+body.linear-theme .vehicle-card-data>b small {color:var(--ink-muted)}
+body.linear-theme .vehicle-card-check {background:#23252a}
+body.linear-theme .vehicle-charge-track {background:var(--border)}
+body.linear-theme :is(.vehicle-filters button,.vehicle-view-switch button,.vehicle-tools button) {background:transparent;color:var(--ink-muted);border-color:var(--border);border-radius:6px}
+body.linear-theme :is(.vehicle-filters button:hover,.vehicle-view-switch button:hover,.vehicle-tools button:hover) {background:var(--surface-3);color:var(--ink)}
+body.linear-theme :is(.vehicle-filters button.active,.vehicle-view-switch button.active) {background:#23252a;color:var(--ink);border-color:var(--border-strong)}
+body.linear-theme :is(.vehicle-search,.vehicle-sort select) {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .vehicle-status {font-weight:500}
+body.linear-theme .vehicle-status.status-running {background:var(--info-bg);color:var(--info)}
+body.linear-theme .vehicle-status.status-standby {background:var(--success-bg);color:var(--success)}
+body.linear-theme .vehicle-status.status-waiting {background:var(--warning-bg);color:var(--warning)}
+body.linear-theme .vehicle-status.status-charging {background:var(--charge-bg);color:var(--charge)}
+body.linear-theme .vehicle-status.status-offline {background:var(--error-bg);color:var(--error)}
+body.linear-theme .vehicle-status.status-maintenance {background:var(--warning-bg);color:var(--warning)}
+body.linear-theme .vehicle-view-switch {background:var(--surface-2);border-radius:6px}
+body.linear-theme :is(.vehicle-bulk,.vehicle-bulk-bar,.vehicle-bulk-actions) {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary)}
+
+/* Vehicle details and remote operations. */
+body.linear-theme .breadcrumb {color:var(--ink-muted)}
+body.linear-theme .vehicle-hero {border-color:var(--border);padding:24px;border-radius:12px}
+body.linear-theme .vehicle-hero h1 {font-size:30px;font-weight:600;letter-spacing:-.6px}
+body.linear-theme :is(.vehicle-ident small,.hero-stat small) {color:var(--ink-muted)}
+body.linear-theme .hero-stat {border-color:var(--border)}
+body.linear-theme .hero-stat strong {font-weight:500}
+body.linear-theme :is(.detail-state>div,.detail-summary,.diagnostic-card) {background:var(--surface-2);border-radius:8px;color:var(--ink-secondary)}
+body.linear-theme :is(.check-list li,.info-list li) {border-color:var(--border);color:var(--ink-secondary)}
+body.linear-theme .check-list li>span:last-child {color:var(--success)}
+body.linear-theme :is(.route-map-controls,.map-caption,.route-map-viewport .map-caption,.route-map-viewport .map-layer-label,.route-map-help) {background:#141516ed;border-color:var(--border-strong);color:var(--ink-secondary);box-shadow:none}
+body.linear-theme .route-map-controls button {color:var(--ink-secondary)}
+body.linear-theme .route-map-controls button:hover:not(:disabled) {background:var(--border)}
+body.linear-theme .route-map-controls>span {background:var(--border-strong)}
+body.linear-theme .route-map-scale {color:var(--ink-muted)}
+body.linear-theme .camera-mini {background:var(--surface-2);color:var(--ink-secondary);box-shadow:none}
+body.linear-theme .camera-mini:hover {background:var(--surface-3);box-shadow:0 0 0 1px var(--border-strong)}
+body.linear-theme .remote-statusbar {border-color:var(--border);color:var(--ink-muted)}
+body.linear-theme .queue-tabs span {background:var(--surface-3);color:var(--ink-muted)}
+body.linear-theme .queue-item {border-radius:6px;color:var(--ink-secondary)}
+body.linear-theme .queue-item:hover {background:var(--surface-2)}
+body.linear-theme .queue-item.active {background:#23252a;border-left-color:var(--accent)}
+body.linear-theme :is(.camera-header,.camera-controls) {background:var(--surface-1);border-color:var(--border)}
+body.linear-theme .camera-header p {color:var(--ink-muted)}
+body.linear-theme :is(.telemetry,.remote-health) {background:var(--surface-2);color:var(--ink-secondary)}
+body.linear-theme .camera-simulation {background:#141516e8;color:var(--ink-secondary)}
+body.linear-theme .remote-car .meta {background:var(--surface-2);border-radius:8px;color:var(--ink-muted)}
+body.linear-theme .remote-car .row>div {background:var(--surface-3);border-radius:6px}
+body.linear-theme .remote-actions {border-color:var(--border);border-top:2px solid var(--accent)}
+body.linear-theme .estop {background:var(--error-bg);border-color:#58333b;color:var(--error);border-radius:8px}
+body.linear-theme .remote-run-banner {background:var(--success-bg);border-color:#35583f;color:var(--success);border-radius:8px}
+body.linear-theme .remote-stopped-banner {background:var(--error-bg);border-color:#66353e;color:var(--error);border-radius:8px}
+
+/* Scheduling: keep the original Gantt grid, coordinates, durations and draggable cursor. */
+body.linear-theme .fleet-schedule-toolbar {background:var(--surface-1)!important;border-color:var(--border)!important;border-radius:12px 12px 0 0!important}
+body.linear-theme .plans-page .schedule-layout {border-color:var(--border);border-radius:0 0 12px 12px}
+body.linear-theme :is(.schedule-main,.dispatch-grid,.dispatch-row) {background:var(--surface-0)}
+body.linear-theme .dispatch-row:nth-child(even) {background:#090a0b}
+body.linear-theme .dispatch-row {border-color:var(--border)}
+body.linear-theme :is(.dispatch-heading,.dispatch-hours,.dispatch-vehicle-heading) {background:var(--surface-2);color:var(--ink-secondary)}
+body.linear-theme .dispatch-vehicle-heading svg {color:var(--ink-muted)}
+body.linear-theme .dispatch-vehicle-heading small {color:var(--ink-muted)}
+body.linear-theme .dispatch-track {background-image:linear-gradient(to right,#34343a55 1px,transparent 1px)}
+body.linear-theme .dispatch-row.is-selected .dispatch-track {background-color:#141516;box-shadow:inset 2px 0 var(--accent),inset 0 -1px var(--accent)}
+body.linear-theme .dispatch-vehicle {background:var(--surface-1)}
+body.linear-theme .dispatch-row.is-selected .dispatch-vehicle {background:var(--surface-3)}
+body.linear-theme .dispatch-vehicle:hover,body.linear-theme .dispatch-row.is-selected .dispatch-vehicle:hover {background:#23252a}
+body.linear-theme .dispatch-vehicle-top>strong,body.linear-theme .dispatch-row.is-selected .dispatch-vehicle-top>strong {color:var(--ink);font-weight:500}
+body.linear-theme .dispatch-vehicle-meta {color:var(--ink-muted)}
+body.linear-theme .vehicle-state {background:var(--success-bg);color:var(--success)}
+body.linear-theme .vehicle-state.selected {background:#2d2f37;color:var(--ink)}
+body.linear-theme .vehicle-state.running {background:var(--info-bg);color:var(--info)}
+body.linear-theme .vehicle-state.charging {background:var(--charge-bg);color:var(--charge)}
+body.linear-theme .vehicle-state.offline {background:#23252a;color:var(--ink-muted)}
+body.linear-theme .vehicle-battery {background:var(--border)}
+body.linear-theme .dispatch-task {background:var(--info-bg);border-color:#426086;color:var(--info);box-shadow:none}
+body.linear-theme .dispatch-task .task-phase {background:#263b55;color:var(--info);font-weight:500}
+body.linear-theme .dispatch-task.waiting {background:var(--warning-bg);border-color:#8c7042;color:var(--warning)}
+body.linear-theme .dispatch-task.waiting .task-phase {background:#45371f;color:var(--warning)}
+body.linear-theme .dispatch-task.charging {background:var(--charge-bg);border-color:#6c5984;color:var(--charge)}
+body.linear-theme .dispatch-task.charging .task-phase {background:#3b2e4c;color:var(--charge)}
+body.linear-theme .dispatch-task.delayed {background:var(--error-bg);border-color:#97515d;color:var(--error)}
+body.linear-theme .dispatch-task.delayed .task-phase {background:#482830;color:var(--error)}
+body.linear-theme .dispatch-task.completed {background:#102019;border-color:#284834;color:#70b38b;opacity:.7}
+body.linear-theme .dispatch-task.completed .task-phase {background:#1b3325;color:#70b38b}
+body.linear-theme .dispatch-task.scheduled {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-muted);opacity:1}
+body.linear-theme .dispatch-task.scheduled .task-phase {background:#23252a;color:var(--ink-muted)}
+body.linear-theme .dispatch-task.standby {background:#191a1b;border-color:#62666d;color:var(--ink-secondary)}
+body.linear-theme .dispatch-task.standby .task-phase {background:#2b2c31;color:var(--ink-secondary)}
+body.linear-theme .dispatch-task.maintenance {background:repeating-linear-gradient(45deg,#191a1b 0,#191a1b 13px,#1e1f21 13px,#1e1f21 26px);border-color:#645357;color:var(--ink-secondary)}
+body.linear-theme .dispatch-task.maintenance .task-phase {background:#29252a;color:var(--ink-secondary)}
+body.linear-theme .dispatch-task.cancelled {background:var(--surface-1);border-color:var(--border);color:var(--ink-muted)}
+body.linear-theme .dispatch-task:hover {box-shadow:0 0 0 1px currentColor;filter:none;transform:none}
+body.linear-theme .dispatch-task.is-selected {border-color:var(--accent-hover);box-shadow:0 0 0 2px var(--accent);opacity:1}
+body.linear-theme .cursor-line {background:var(--error);box-shadow:none}
+body.linear-theme .cursor-label {background:var(--error);color:#211014;box-shadow:none}
+body.linear-theme .plans-page .plan-inspector {background:var(--surface-1);border-color:var(--border-strong)}
+body.linear-theme .dispatch-inspector-head {background:var(--surface-2);border-color:var(--border)}
+body.linear-theme :is(.dispatch-inspector-head h3 svg,.plan-code,.dispatch-plan-meta small,.dispatch-progress-times,.dispatch-chain-step p,.dispatch-note) {color:var(--ink-muted)}
+body.linear-theme .plans-page .plan-inspector section {border-bottom:1px solid var(--border)}
+body.linear-theme .plan-vehicle-link {color:var(--ink);font-weight:500}
+body.linear-theme .dispatch-chain-step {border-color:var(--border-strong)}
+body.linear-theme .dispatch-plan-progress {background:var(--border)}
+body.linear-theme .dispatch-plan-progress i {background:var(--accent)}
+body.linear-theme .dispatch-status {background:#23252a;color:var(--ink-muted)}
+body.linear-theme .dispatch-status.waiting {background:var(--warning-bg);color:var(--warning)}
+body.linear-theme .dispatch-status.running {background:var(--info-bg);color:var(--info)}
+body.linear-theme .dispatch-status.delayed {background:var(--error-bg);color:var(--error)}
+body.linear-theme .dispatch-status.completed {background:var(--success-bg);color:var(--success)}
+body.linear-theme .plans-page .resource-ok {background:var(--success-bg);color:var(--success)}
+body.linear-theme .plans-page .resource-ok.scheduled {background:var(--surface-2);color:var(--ink-muted)}
+body.linear-theme .dispatch-secondary>.btn {background:var(--surface-2)}
+body.linear-theme .plans-page .schedule-foot {background:transparent;color:var(--ink-muted)}
+body.linear-theme .dispatch-scroll {scrollbar-color:var(--border-strong) var(--surface-1)}
+
+/* Automation: free canvas, actual nodes, ports, wires and inspectors are retained. */
+body.linear-theme .automation-page {--flow-border:var(--border);--flow-muted:var(--ink-muted);--flow-blue:var(--accent-hover);--flow-surface:var(--surface-1)}
+body.linear-theme :is(.flow-subtitle,.flow-save-status,.flow-assignment-copy p,.flow-assignment-copy .eyebrow) {color:var(--ink-muted)}
+body.linear-theme .flow-version {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .flow-assignment {background:var(--surface-1);border-color:var(--border);border-radius:12px}
+body.linear-theme .flow-group-icon {background:var(--surface-3);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .flow-assignment-copy h2 {color:var(--ink)}
+body.linear-theme :is(.flow-assignment-copy h2>span,.flow-group-members>span,.flow-member-chip) {background:var(--surface-3);border-color:var(--border-strong);color:var(--ink-muted)}
+body.linear-theme .flow-assignment-meta {border-color:var(--border)}
+body.linear-theme .flow-assignment-meta>strong {color:var(--ink-secondary)}
+body.linear-theme .flow-assignment-meta>span {color:var(--ink-muted)}
+body.linear-theme .flow-assignment>.btn {background:#23252a;border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .flow-toolbar {background:var(--surface-1);border-color:var(--border);border-radius:12px 12px 0 0}
+body.linear-theme .flow-breadcrumb {color:var(--ink-secondary)}
+body.linear-theme .flow-breadcrumb>span {color:var(--ink-muted)}
+body.linear-theme .flow-breadcrumb button {background:#23252a;border-color:var(--border-strong);color:var(--ink-secondary);border-radius:6px}
+body.linear-theme .flow-toolbar-actions select {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .flow-workspace {border-color:var(--border);border-radius:0 0 12px 12px;background:var(--surface-0)}
+body.linear-theme .flow-palette {background:var(--surface-1);border-color:var(--border);scrollbar-color:var(--border-strong) transparent}
+body.linear-theme .flow-palette h3 {color:var(--ink-secondary)}
+body.linear-theme .flow-palette-group h4 {color:var(--ink-muted)}
+body.linear-theme .flow-palette-search {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .flow-palette-item {background:transparent;color:var(--ink-secondary);border-color:transparent}
+body.linear-theme .flow-palette-item:hover {background:var(--surface-3);border-color:var(--border-strong)}
+body.linear-theme .flow-palette-item>i {background:#23252a!important;color:var(--ink-muted)}
+body.linear-theme .flow-palette-item>b {color:var(--ink-muted)}
+body.linear-theme .flow-canvas {background-color:#090a0b;background-image:radial-gradient(#34343a .8px,transparent .8px)}
+body.linear-theme .flow-canvas.no-grid {background-image:none}
+body.linear-theme .flow-canvas.is-drop-target {background-color:var(--surface-2);box-shadow:inset 0 0 0 2px var(--accent)}
+body.linear-theme .flow-canvas-caption {color:var(--ink-secondary)}
+body.linear-theme .flow-canvas-caption :is(span,small) {color:var(--ink-muted)}
+body.linear-theme .flow-node {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary);box-shadow:0 2px 5px #0002}
+body.linear-theme .flow-node:hover {border-color:#62666d;box-shadow:0 2px 5px #0002;transform:none}
+body.linear-theme .flow-node.is-selected {border-color:var(--accent-hover);box-shadow:0 0 0 2px var(--accent)}
+body.linear-theme .flow-node:has(.flow-inline-steps) {border-color:#62666d}
+body.linear-theme .flow-node.is-selected:has(.flow-inline-steps) {border-color:var(--accent-hover)}
+body.linear-theme .flow-node-header {background:var(--surface-3)}
+body.linear-theme .flow-node-header :is(b,strong) {color:var(--ink);font-weight:500}
+body.linear-theme .flow-node-header small {color:var(--ink-muted)}
+body.linear-theme .flow-node-header>i {background:#23252a}
+body.linear-theme .flow-node-summary {color:var(--ink-muted)}
+body.linear-theme .flow-node-summary b {color:var(--ink-secondary)}
+body.linear-theme .flow-node-quick {background:var(--surface-1);border-color:var(--border)}
+body.linear-theme .flow-node-quick label {color:var(--ink-muted)}
+body.linear-theme .flow-node-quick :is(input[type=number],select) {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .flow-node-open {background:#23252a;color:var(--ink-secondary)}
+body.linear-theme .flow-node-open:hover {background:#34343a;color:var(--ink)}
+body.linear-theme :is(.flow-node-results,.flow-node-result) {border-color:var(--border)}
+body.linear-theme .flow-node-port:before {background:var(--surface-1)}
+body.linear-theme .flow-node-port:hover:before {background:currentColor}
+body.linear-theme .flow-wire {opacity:.8}
+body.linear-theme .flow-wires text {stroke:#090a0b}
+body.linear-theme .flow-edge.is-selected .flow-wire {stroke:var(--accent-hover)}
+body.linear-theme .flow-wire-preview {stroke:var(--accent-hover)}
+body.linear-theme .flow-inline-steps {background:var(--surface-1);border-color:var(--border-strong)}
+body.linear-theme .flow-inline-child {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .flow-inline-child :is(span,small) {color:var(--ink-muted)}
+body.linear-theme .flow-inline-child:not(:last-child):after {border-color:var(--border-strong)}
+body.linear-theme .flow-inline-child:hover,body.linear-theme .flow-inline-child.is-selected {background:var(--surface-3);border-color:var(--accent)}
+body.linear-theme :is(.flow-controls,.flow-link-toolbar) {background:var(--surface-2);border-color:var(--border-strong);box-shadow:none;color:var(--ink-secondary)}
+body.linear-theme .flow-controls button {background:transparent;color:var(--ink-secondary)}
+body.linear-theme .flow-controls button:hover {background:#23252a}
+body.linear-theme :is(.flow-inspector,.flow-inspector-footer) {background:var(--surface-1);border-color:var(--border)}
+body.linear-theme .flow-inspector-head {background:var(--surface-2);border-color:var(--border)}
+body.linear-theme .flow-inspector-head h3 {color:var(--ink)}
+body.linear-theme :is(.flow-form-label,.flow-inspector-body p,.flow-section-label,.flow-section-note) {color:var(--ink-muted)}
+body.linear-theme :is(.flow-form-label input,.flow-form-label select,.flow-form-label textarea) {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme :is(.flow-rule-box,.flow-output-item,.flow-child-list li,.flow-condition-card) {background:var(--surface-2);border-color:var(--border);color:var(--ink-secondary)}
+body.linear-theme .flow-rule-box>.btn {background:#23252a;color:var(--ink-secondary)}
+body.linear-theme .flow-validation {background:var(--success-bg);color:var(--success)}
+body.linear-theme .flow-validation.has-error {background:var(--warning-bg);color:var(--warning)}
+body.linear-theme .flow-node.error-status {border-color:var(--error)}
+body.linear-theme .flow-node.is-running {border-color:var(--success);box-shadow:0 0 0 2px #70c49244}
+body.linear-theme .flow-node.is-running .flow-node-header {background:var(--success-bg)}
+body.linear-theme .flow-node.is-complete {border-color:#427b53}
+body.linear-theme :is(.flow-simulation,.flow-simulation>header,.flow-vehicle-result,.flow-trace-panel) {background:var(--surface-1);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme :is(.flow-trace-heading,.flow-trace li) {border-color:var(--border)}
+body.linear-theme :is(.flow-trace-heading>strong,.flow-trace-content strong,.flow-simulation h3) {color:var(--ink-secondary)}
+body.linear-theme :is(.flow-trace-content small,.flow-trace-content>p,.flow-simulation>header h3>span) {color:var(--ink-muted)}
+body.linear-theme .flow-check-list>.btn {background:var(--warning-bg);border-color:#675438;color:var(--warning)}
+body.linear-theme .flow-member-list>label {background:var(--surface-2);border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .flow-member-list>label:hover {background:var(--surface-3)}
+body.linear-theme .flow-member-list>label:has(input:checked) {background:var(--surface-3);border-color:var(--accent)}
+body.linear-theme :is(.flow-member-list small,.flow-member-count,.flow-group-form>p) {color:var(--ink-muted)}
+body.linear-theme .flow-members-toolbar input {background:var(--surface-2);border-color:var(--border-strong)}
+body.linear-theme .flow-members-toolbar button {background:#23252a;border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .flow-group-form .dialog-actions {background:var(--surface-1)}
+body.linear-theme .flow-drag-preview.is-valid .flow-node {background:var(--surface-2);border-color:var(--accent-hover)}
+body.linear-theme .flow-drag-hint {background:var(--surface-3);border-color:var(--accent);color:var(--ink-secondary)}
+body.linear-theme .flow-trash-zone {background:#141516ed;border-color:var(--border-strong);color:var(--ink-muted)}
+body.linear-theme .flow-trash-zone.is-active {background:var(--error-bg);border-color:#97515d;color:var(--error)}
+body.linear-theme .flow-trash-zone.is-over {background:#482830;border-color:var(--error);color:#ffd8de}
+body.linear-theme .flow-inspector-close {background:#23252a;border-color:var(--border-strong);color:var(--ink-muted);border-radius:6px}
+body.linear-theme .flow-inspector-close:hover {background:var(--border-strong);color:var(--ink)}
+body.linear-theme .flow-inspector-body {scrollbar-color:var(--border-strong) transparent}
+body.linear-theme .flow-vehicle-results {background:var(--surface-2);border-color:var(--border)}
+body.linear-theme .flow-vehicle-result.is-selected,body.linear-theme .flow-vehicle-result.active {background:#23252a;border-color:var(--accent);color:var(--ink)}
+body.linear-theme .flow-status-badge {background:#23252a;border-color:var(--border-strong);color:var(--ink-muted)}
+body.linear-theme .flow-status-badge.waiting {background:var(--info-bg);border-color:#426086;color:var(--info)}
+body.linear-theme .flow-status-badge.completed {background:var(--success-bg);border-color:#35583f;color:var(--success)}
+body.linear-theme .flow-status-badge.manual {background:var(--warning-bg);border-color:#675438;color:var(--warning)}
+body.linear-theme .flow-status-badge.blocked {background:var(--error-bg);border-color:#66353e;color:var(--error)}
+body.linear-theme .flow-trace-index {background:#23252a;border-color:var(--border-strong);color:var(--ink-muted)}
+body.linear-theme .flow-trace li:not(:last-child):before {background:var(--border-strong)}
+body.linear-theme .flow-rule-box :is(b,strong) {color:var(--ink-secondary)}
+body.linear-theme .flow-rule-box .muted {color:var(--ink-muted)}
+
+/* Four-step creation workflow. Labels, validation and consequences are retained. */
+body.linear-theme .create-page .panel {border-radius:12px}
+body.linear-theme .create-step {background:var(--surface-1);border:1px solid var(--border);border-radius:8px;color:var(--ink-muted);box-shadow:none}
+body.linear-theme .create-step.active {background:var(--surface-2);border-color:var(--accent);color:var(--ink);box-shadow:none}
+body.linear-theme .create-step.active b {background:var(--accent);color:#fff}
+body.linear-theme .create-step.complete {border-color:var(--border-strong);color:var(--ink-secondary)}
+body.linear-theme .create-type {background:var(--surface-2);border-color:var(--border);color:var(--ink-muted);border-radius:8px;box-shadow:none}
+body.linear-theme .create-type:hover {background:var(--surface-3);border-color:var(--border-strong);transform:none;box-shadow:none}
+body.linear-theme .create-type.selected {background:var(--surface-3);border-color:var(--accent);color:var(--ink);box-shadow:0 0 0 1px var(--accent)}
+body.linear-theme :is(.create-task-description,.create-field small,.create-preview-top span,.create-review dt) {color:var(--ink-muted)}
+body.linear-theme :is(.create-origin,.create-destination,.create-field>span,.create-review dd) {color:var(--ink-secondary)}
+body.linear-theme .create-field .field {background:var(--surface-2);border-color:var(--border-strong);border-radius:8px;color:var(--ink)}
+body.linear-theme .create-field .field:focus {outline-color:var(--accent)}
+body.linear-theme .create-inline-note {background:var(--surface-2);color:var(--ink-muted);border-radius:8px}
+body.linear-theme .create-intro {background:var(--surface-1)}
+body.linear-theme .create-intro-icon {color:var(--ink-secondary)}
+body.linear-theme .create-intro p {color:var(--ink-muted)}
+body.linear-theme .create-vehicle {background:var(--surface-2);border-color:var(--border);border-radius:8px;color:var(--ink-secondary)}
+body.linear-theme .create-vehicle:hover {background:var(--surface-3)}
+body.linear-theme .create-vehicle.selected {background:var(--surface-3);border:1px solid var(--accent)}
+body.linear-theme .create-radio {color:var(--accent-hover)}
+body.linear-theme :is(.create-vehicle-title small,.create-vehicle-reason) {color:var(--ink-muted)}
+body.linear-theme .create-choose {background:#23252a;border-radius:6px}
+body.linear-theme .create-vehicle.selected .create-choose {background:var(--accent);color:#fff}
+body.linear-theme .create-review dl>div {border-color:var(--border)}
+body.linear-theme .create-checklist {background:var(--success-bg);border-color:#35583f;border-radius:8px}
+body.linear-theme .create-checklist p {color:var(--success)}
+body.linear-theme .create-preview {border-left-color:var(--border-strong)!important}
+body.linear-theme .create-preview-top {border-color:var(--border)}
+body.linear-theme .create-preview-top strong {color:var(--ink)}
+body.linear-theme .create-map {background:var(--surface-2);border-radius:8px}
+body.linear-theme .create-map>div {background:#141516e8;color:var(--ink-secondary)}
+body.linear-theme .create-subtasks {border-color:var(--border)}
+body.linear-theme .create-subtasks i {background:#23252a;color:var(--ink-muted)}
+body.linear-theme .create-battery small {color:var(--ink-muted)}
+body.linear-theme .create-footer {border-color:var(--border)}
+body.linear-theme .create-errors {background:var(--error-bg);border-color:#66353e;color:var(--error);border-radius:8px}
+body.linear-theme .create-page .cyan {color:var(--ink-secondary)}
+body.linear-theme .create-page .green {color:var(--success)}
+body.linear-theme .create-page .amber {color:var(--warning)}
+
+/* Logs, settings, and feedback. */
+body.linear-theme .log-event {background:transparent;border-color:var(--border)}
+body.linear-theme .log-event time {color:var(--ink-muted)}
+body.linear-theme .log-event p {color:var(--ink-secondary)}
+body.linear-theme .settings-card p {color:var(--ink-muted)}
+body.linear-theme .settings-option {border-color:var(--border);color:var(--ink-secondary)}
+body.linear-theme .settings-card .btn {margin-right:4px}
+body.linear-theme .fleet-ant-btn-primary {background:var(--accent);box-shadow:none}
+body.linear-theme .fleet-ant-btn-primary:not(:disabled):hover {background:var(--accent-hover)}
+body.linear-theme .fleet-ant-segmented-item-selected {background:#2b2c31;color:var(--ink);box-shadow:none}
+body.linear-theme .fleet-ant-picker-cell-in-view.fleet-ant-picker-cell-selected .fleet-ant-picker-cell-inner {background:var(--accent)}
+body.linear-theme .fleet-ant-select-item-option-selected:not(.fleet-ant-select-item-option-disabled) {background:#2b2c31}
+body.linear-theme :is(button,a,input,select,textarea):focus-visible {outline-color:var(--accent-hover)}
+@media(max-width:1300px) {
+  body.linear-theme .flow-toolbar {flex-wrap:wrap;row-gap:10px}
+  body.linear-theme .flow-head-actions .btn {padding-inline:10px}
+  body.linear-theme .flow-page-head {gap:12px}
+  body.linear-theme .flow-page-head h1 {font-size:25px}
+}
+@media(prefers-reduced-motion:reduce) {
+  body.linear-theme *,body.linear-theme *::before,body.linear-theme *::after {animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
