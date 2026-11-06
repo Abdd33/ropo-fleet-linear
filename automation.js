@@ -55,6 +55,22 @@
   let dirty = false, results = [], resultIndex = 0, simulationScenario = "current", playback = 0, timer = null;
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const now = () => (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { hour12: false });
+  const uiKey = "ropo-fleet-linear-flow-ui";
+  function readUI() {
+    try { return JSON.parse(localStorage.getItem(uiKey)) || {}; }
+    catch { return {}; }
+  }
+  const flowUI = readUI();
+  function saveUI() {
+    try { localStorage.setItem(uiKey, JSON.stringify(flowUI)); } catch {}
+  }
+  const groupSize = { width: 248, height: 96 };
+  function groupPosition() {
+    const pos = flowUI.groupPosition;
+    if (Number.isFinite(pos?.x) && Number.isFinite(pos?.y)) return pos;
+    const start = model().graph.nodes.find(n => n.kind === "trigger");
+    return { x: start?.x ?? 20, y: (start?.y ?? 40) - groupSize.height - 24 };
+  }
   function model() {
     if (!F.state.flowV2 || F.state.flowV2.schemaVersion !== 2) F.state.flowV2 = M.create(F.state.vehicles, F.state.flow);
     return F.state.flowV2;
@@ -98,8 +114,11 @@
   }
   const issues = () => M.validate(model(), F.state.vehicles);
   function status(text) {
-    const el = root?.querySelector(".flow-save-status");
-    if (el) el.textContent = text;
+    const el = root?.querySelector('[data-action="flow-save"]');
+    if (!el) return;
+    el.title = text;
+    el.setAttribute("aria-label", "保存草稿 · " + text);
+    el.classList.toggle("has-unsaved-flow", dirty);
   }
   function changed() {
     stopPlayback();
@@ -146,18 +165,29 @@
     if (!stage || !graph()) return;
     const editingScope = scope;
     scope = "root";
-    stage.innerHTML = wires() + model().graph.nodes.map((n) => nodeHTML(displayNode(n))).join("");
+    stage.innerHTML = wires() + model().graph.nodes.map((n) => nodeHTML(displayNode(n))).join("") + groupNodeHTML();
     scope = editingScope;
     applyView();
     updateValidation();
+    updateEdgeSelection();
+    const undoButton = root.querySelector(".flow-undo-delete");
+    undoButton.hidden = !undo || undo.scope !== scope;
+    undoButton.textContent = undo?.edge ? "↶ 撤销断开" : "↶ 撤销删除";
+    previewLink();
+  }
+  function updateEdgeSelection() {
+    stage.querySelectorAll("[data-edge]").forEach(hit => {
+      const active = hit.dataset.edge === selectedEdge;
+      hit.parentElement.classList.toggle("is-selected", active);
+      hit.setAttribute("aria-pressed", String(active));
+    });
     const toolbar = root.querySelector(".flow-link-toolbar"), edge = graph().edges.find((e) => e.id === selectedEdge);
     toolbar.hidden = !edge;
     if (edge) {
       const a = graph().nodes.find((n) => n.id === edge.from), b = graph().nodes.find((n) => n.id === edge.to);
       toolbar.querySelector("span").textContent = `${title(a)} → ${title(b)}`;
     }
-    root.querySelector(".flow-undo-delete").hidden = !undo || undo.scope !== scope;
-    previewLink();
+
   }
   function applyView() {
     if (stage) stage.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.scale})`;
@@ -169,9 +199,11 @@
     if (el) el.textContent = Math.round(view.scale * 100) + "%";
   }
   function fit() {
-    const ns = model().graph.nodes.map(displayNode);
-    if (!ns?.length) return;
-    const minX = Math.min(...ns.map((n) => n.x)), minY = Math.min(...ns.map((n) => n.y)), w = Math.max(...ns.map((n) => n.x + 248)) - minX, z = Math.max(...ns.map((n) => n.y + nodeHeight(n))) - minY;
+    const boxes = model().graph.nodes.map(n => ({ ...displayNode(n), width: 248, height: nodeHeight(n) }));
+    boxes.push({ ...groupPosition(), ...groupSize });
+    const minX = Math.min(...boxes.map(n => n.x)), minY = Math.min(...boxes.map(n => n.y));
+    const w = Math.max(...boxes.map(n => n.x + n.width)) - minX;
+    const z = Math.max(...boxes.map(n => n.y + n.height)) - minY;
     view.scale = Math.min(1, Math.max(0.3, Math.min((canvas.clientWidth - 100) / w, (canvas.clientHeight - 150) / z)));
     view.x = (canvas.clientWidth - w * view.scale) / 2 - minX * view.scale;
     view.y = 60 + (canvas.clientHeight - 150 - z * view.scale) / 2 - minY * view.scale;
@@ -265,21 +297,39 @@
   function paletteHTML() {
     const list = M.palette[scope === "root" ? "root" : model().graph.nodes.find((n) => n.id === scope)?.kind] || [];
     const groups = scope === "root" ? [["业务阶段", list.filter((k) => MAIN.includes(k))], ["触发与控制", list.filter((k) => !MAIN.includes(k))]] : [["可用子步骤", list.filter((k) => !["stepStart", "stepEnd"].includes(k))], ["阶段边界", list.filter((k) => ["stepStart", "stepEnd"].includes(k))]];
-    return `<h3>${scope === "root" ? "流程组件" : "阶段子步骤"}</h3><input class="flow-palette-search" aria-label="搜索流程组件" placeholder="搜索组件…">${groups.filter((x) => x[1].length).map(([name, ks]) => `<div class="flow-palette-group"><h4>${name}</h4><div>${ks.map((kind) => {
+    return `<div class="flow-palette-head"><h3>${scope === "root" ? "流程组件" : "阶段子步骤"}</h3><button type="button" class="flow-palette-toggle" data-action="flow-palette-toggle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button></div><input class="flow-palette-search" aria-label="搜索流程组件" placeholder="搜索组件…">${groups.filter((x) => x[1].length).map(([name, ks]) => `<div class="flow-palette-group"><h4>${name}</h4><div>${ks.map((kind) => {
       const s = M.catalog[kind];
-      return `<button type="button" class="flow-palette-item" data-action="flow-add" data-kind="${kind}" aria-label="添加${h(s.title)}"><i style="color:${s.color};background:${s.color}18">${flowIcon(kind)}</i><span>${h(s.title)}</span><b>+</b></button>`;
+      return `<button type="button" class="flow-palette-item" data-action="flow-add" data-kind="${kind}" aria-label="添加${h(s.title)}" title="${h(s.title + " · " + s.subtitle)}"><i style="color:${s.color};background:${s.color}18">${flowIcon(kind)}</i><span>${h(s.title)}</span><b>+</b></button>`;
     }).join("")}</div></div>`).join("")}`;
   }
-  function assignmentHTML() {
-    const g = model().group;
-    const members = g.vehicleIds.map((id) => F.state.vehicles.find((v) => v.id === id)).filter(Boolean), ready = members.filter((v) => !["offline", "maintenance"].includes(v.status)).length;
-    return `<div class="flow-group-icon">${F.icon("vehicles", 24)}</div><div class="flow-assignment-copy"><span class="eyebrow">当前分配车组</span><h2>${h(g.name)} <span>${members.length} 辆</span></h2></div><div class="flow-group-members">${members.slice(0, 4).map((v) => `<span title="${h(v.id)}">${h(v.id)}</span>`).join("")}${members.length > 4 ? `<span>+${members.length - 4}</span>` : ""}</div><div class="flow-assignment-meta"><strong>${h(g.shiftStart)}–${h(g.shiftEnd)}</strong><span>${ready} 辆可参与 · ${members.length - ready} 辆需检查</span></div><button class="btn" data-action="flow-group">车组设置 ${F.icon("settings", 14)}</button>`;
+  function updatePalette() {
+    const collapsed = !!flowUI.paletteCollapsed;
+    root.querySelector(".flow-workspace").classList.toggle("palette-collapsed", collapsed);
+    const toggle = root.querySelector(".flow-palette-toggle");
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+    toggle.setAttribute("aria-controls", "flow-palette-content");
+    toggle.title = collapsed ? "展开流程组件" : "收起流程组件";
+    toggle.setAttribute("aria-label", toggle.title);
+    root.querySelectorAll(".flow-palette-item").forEach(item => {
+      item.hidden = !collapsed && !item.textContent.includes(root.querySelector(".flow-palette-search").value.trim());
+    });
+  }
+  function groupNodeHTML() {
+    const g = model().group, pos = groupPosition();
+    const members = F.state.vehicles.filter(v => g.vehicleIds.includes(v.id));
+    const ready = members.filter(v => !["offline", "maintenance"].includes(v.status)).length;
+    return `<button type="button" class="flow-context-node" data-action="flow-group" aria-label="车组设置 · ${h(g.name)}" style="left:${pos.x}px;top:${pos.y}px;width:${groupSize.width}px;height:${groupSize.height}px">
+      <span class="flow-context-caption">${F.icon("vehicles", 15)} 车组 · ${members.length} 辆</span>
+      <strong>${h(g.name)}</strong>
+      <span class="flow-context-shift">${h(g.shiftStart)}–${h(g.shiftEnd)}</span>
+      <span class="flow-context-readiness">${ready} 辆可参与 · ${members.length - ready} 辆需检查</span>
+    </button>`;
   }
   function render() {
     const m = model();
-    return `<section class="automation-page"><header class="flow-page-head"><div><h1>自动化流程 <span class="flow-version">${m.publishedAt && !m.draft ? "已发布" : "草稿"} v2.${m.version}</span></h1><p class="flow-subtitle">${h(m.name || "日常运营与补能循环")} <span class="flow-save-status">${dirty ? "未保存" : m.savedAt ? "已保存于 " + h(m.savedAt) : "尚未保存"}</span></p></div><div class="flow-head-actions"><button class="btn" data-action="flow-check">检查流程</button><button class="btn" data-action="flow-save">保存草稿</button><button class="btn primary" data-action="flow-publish">发布演示版本</button></div></header>
-  <section class="flow-assignment">${assignmentHTML()}</section><div class="flow-toolbar"><div class="flow-breadcrumb"><strong>主流程</strong></div><div class="flow-toolbar-actions">${F.contextHelp("canvas", "画布帮助")}<button class="btn subtle flow-exception-toggle" data-action="flow-exceptions" aria-pressed="false">显示异常连线</button><select class="flow-scenario" aria-label="模拟场景"><option value="current">按车辆当前状态</option><option value="low">低电量回场</option><option value="closing">到达收班时间</option><option value="resource">补能资源不足</option><option value="missing">车辆数据缺失</option></select><button class="btn primary" data-action="flow-simulate">▷ 车组模拟</button></div></div>
-  <div class="flow-workspace"><aside class="flow-palette"></aside><div class="flow-canvas" tabindex="0" aria-label="自动化流程画布"><div class="flow-stage"></div><div class="flow-link-toolbar" hidden><span></span><button data-action="flow-disconnect">断开连线</button><button data-action="flow-clear-edge" aria-label="取消选中连线">×</button></div><div class="flow-canvas-bottom"><button class="flow-validation" data-action="flow-check"></button><div class="flow-controls"><button data-action="flow-zoom-out" aria-label="缩小">−</button><span class="flow-zoom-value">100%</span><button data-action="flow-zoom-in" aria-label="放大">+</button><button data-action="flow-fit" aria-label="适应画布">⛶</button></div></div><div class="flow-trash"><div class="flow-trash-zone" role="region" aria-label="节点垃圾桶">${F.icon("close", 18)}<span>拖入此处删除</span></div><button class="flow-undo-delete" data-action="flow-undo" hidden>↶ 撤销删除</button></div></div><aside class="flow-inspector"></aside></div><section class="flow-simulation" hidden></section></section>`;
+    return `<section class="automation-page"><header class="flow-page-head"><div><h1>自动化流程 <span class="flow-version">${m.publishedAt && !m.draft ? "已发布" : "草稿"} v2.${m.version}</span></h1></div><div class="flow-head-actions"><button class="btn" data-action="flow-check">检查流程</button><button class="btn" data-action="flow-save">保存草稿</button><button class="btn primary" data-action="flow-publish">发布演示版本</button></div></header>
+  <div class="flow-toolbar"><div class="flow-breadcrumb"><strong>主流程</strong></div><div class="flow-toolbar-actions">${F.contextHelp("canvas", "画布帮助")}<button class="btn subtle flow-exception-toggle" data-action="flow-exceptions" aria-pressed="false">显示异常连线</button><select class="flow-scenario" aria-label="模拟场景"><option value="current">按车辆当前状态</option><option value="low">低电量回场</option><option value="closing">到达收班时间</option><option value="resource">补能资源不足</option><option value="missing">车辆数据缺失</option></select><button class="btn primary" data-action="flow-simulate">▷ 车组模拟</button></div></div>
+  <div class="flow-workspace"><aside id="flow-palette-content" class="flow-palette" aria-label="流程组件"></aside><div class="flow-canvas" tabindex="0" aria-label="自动化流程画布"><div class="flow-stage"></div><div class="flow-link-toolbar" hidden><span></span><button data-action="flow-disconnect">断开连线</button><button data-action="flow-clear-edge" aria-label="取消选中连线">×</button></div><div class="flow-canvas-bottom"><button class="flow-validation" data-action="flow-check"></button><div class="flow-controls"><button data-action="flow-zoom-out" aria-label="缩小">−</button><span class="flow-zoom-value">100%</span><button data-action="flow-zoom-in" aria-label="放大">+</button><button data-action="flow-fit" aria-label="适应画布">⛶</button></div></div><div class="flow-trash"><div class="flow-trash-zone" role="region" aria-label="节点垃圾桶">${F.icon("close", 18)}<span>拖入此处删除</span></div><button class="flow-undo-delete" data-action="flow-undo" hidden>↶ 撤销删除</button></div></div><aside class="flow-inspector"></aside></div><section class="flow-simulation" hidden></section></section>`;
   }
   function enter(next) {
     if (!root) return;
@@ -296,6 +346,7 @@
     pending = null;
     root.querySelector(".flow-workspace").classList.remove("is-inspecting");
     root.querySelector(".flow-palette").innerHTML = paletteHTML();
+    updatePalette();
     draw();
     refreshInspector();
   }
@@ -344,12 +395,16 @@
     F.toast(existing ? "已替换该结果的下一步" : "已建立连接");
   }
   function disconnect(id) {
-    const g = graph();
-    g.edges = g.edges.filter((e) => e.id !== id);
+    const g = graph(), index = g.edges.findIndex(e => e.id === id);
+    if (index < 0) return;
+    const [edge] = g.edges.splice(index, 1);
+    undo = { scope, index, edge };
+    pending = null;
     selectedEdge = null;
     changed();
     draw();
     refreshInspector();
+    F.toast("已断开连线");
   }
   function remove(id, original) {
     const g = graph(), n = g.nodes.find((n2) => n2.id === id);
@@ -365,6 +420,23 @@
   function restore() {
     if (!undo || undo.scope !== scope) return;
     const g = graph(), u = undo;
+    if (u.edge) {
+      const { from, outcome, to } = u.edge;
+      if (!g.nodes.some(n => n.id === from) || !g.nodes.some(n => n.id === to)
+          || g.edges.some(e => e.from === from && e.outcome === outcome)) {
+        F.toast("端点或命名结果已修改，无法恢复原连线", "warning");
+        return;
+      }
+      undo = null;
+      g.edges.splice(u.index, 0, u.edge);
+      selectedEdge = u.edge.id;
+      changed();
+      draw();
+      refreshInspector();
+      canvas.focus({ preventScroll: true });
+      F.toast("已恢复连线");
+      return;
+    }
     undo = null;
     g.nodes.splice(u.index, 0, u.node);
     u.edges.forEach((e) => {
@@ -436,7 +508,6 @@
       else groups[i] = clone(next);
       model().group = next;
       changed();
-      root.querySelector(".flow-assignment").innerHTML = assignmentHTML();
       draw();
       refreshInspector();
       save();
@@ -521,7 +592,6 @@
         scope = "root";
         refreshInspector();
         drag = { type: "add", kind: item.dataset.kind, px: e.clientX, py: e.clientY, pointerId: e.pointerId, target: item };
-        item.setPointerCapture(e.pointerId);
         return;
       }
       if (port && port.dataset.port === "output") {
@@ -535,7 +605,12 @@
         previewLink();
         return;
       }
-      if (e.target.closest("button,input,select")) return;
+      const context = e.target.closest(".flow-context-node");
+      if (context) {
+        drag = { type: "group", ...groupPosition(), px: e.clientX, py: e.clientY, pointerId: e.pointerId, target: context };
+        return;
+      }
+      if (e.target.closest("button,input,select,[data-edge]")) return;
       if (node) {
         if (!flushInspector()) return;
         selectedId = null;
@@ -554,6 +629,7 @@
       if (!drag || e.pointerId !== drag.pointerId) return;
       const d = drag, dx = e.clientX - d.px, dy = e.clientY - d.py;
       if (!d.moved && Math.hypot(dx, dy) < 5) return;
+      if (!d.moved && ["group", "add"].includes(d.type)) d.target.setPointerCapture(e.pointerId);
       d.moved = true;
       canvas.classList.add("is-dragging");
       e.preventDefault();
@@ -564,6 +640,10 @@
         draw();
         root.querySelector(".flow-trash-zone").classList.add("is-active");
         root.querySelector(".flow-trash-zone").classList.toggle("is-over", inTrash(e));
+      }
+      if (d.type === "group") {
+        d.target.style.left = d.x + dx / view.scale + "px";
+        d.target.style.top = d.y + dy / view.scale + "px";
       }
       if (d.type === "pan") {
         view.x = d.x + dx;
@@ -612,6 +692,15 @@
           } else choose(d.id);
         }
       }
+      if (d.type === "group" && d.moved) {
+        if (commit) {
+          flowUI.groupPosition = { x: parseFloat(d.target.style.left), y: parseFloat(d.target.style.top) };
+          saveUI();
+        } else {
+          d.target.style.left = d.x + "px";
+          d.target.style.top = d.y + "px";
+        }
+      }
       if (d.type === "add" && d.moved && commit && inCanvas(e) && !inTrash(e)) {
         const p = graphPoint(e);
         addNode(d.kind, { x: p.x - 124, y: p.y - 32 });
@@ -633,6 +722,27 @@
       canvas.classList.remove("is-panning-ready");
       pending = null;
       previewLink();
+    }, { signal });
+    function selectEdge(id) {
+      if (!flushInspector()) return;
+      selectedId = null;
+      scope = "root";
+      root.querySelector(".flow-workspace").classList.remove("is-inspecting");
+      refreshInspector();
+      selectedEdge = id;
+      stage.querySelector(".flow-node.is-selected")?.classList.remove("is-selected");
+      updateEdgeSelection();
+    }
+    root.addEventListener("dblclick", e => {
+      const hit = e.target.closest(".flow-wire-hit");
+      if (!hit || spaceHeld || e.target.closest("[data-port]")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (flushInspector()) {
+        scope = "root";
+        disconnect(hit.dataset.edge);
+        canvas.focus({ preventScroll: true });
+      }
     }, { signal });
     root.addEventListener("click", (e) => {
       if (suppressed) {
@@ -656,13 +766,8 @@
         return;
       }
       if (edge) {
-        if (!flushInspector()) return;
-        selectedId = null;
-        scope = "root";
-        refreshInspector();
-        selectedEdge = edge.dataset.edge;
-        draw();
-        canvas.focus({ preventScroll: true });
+        selectEdge(edge.dataset.edge);
+        edge.focus({ preventScroll: true });
         return;
       }
       if (node && !e.target.closest("button,input,select")) {
@@ -683,7 +788,13 @@
       applyView();
     }, { signal, passive: false });
     root.addEventListener("keydown", (e) => {
-      if (e.code === "Space" && e.target.closest(".flow-canvas") && !e.target.matches("input,select,textarea")) {
+      const edge = e.target.closest(".flow-wire-hit");
+      if (edge && ["Enter", " "].includes(e.key)) {
+        e.preventDefault();
+        selectEdge(edge.dataset.edge);
+        return;
+      }
+      if (e.code === "Space" && e.target.closest(".flow-canvas") && !e.target.matches("button,input,select,textarea")) {
         e.preventDefault();spaceHeld = true;canvas.classList.add("is-panning-ready");return;
       }
       if (e.key === "Escape") {
@@ -695,6 +806,7 @@
       if (e.target.matches("input,select,textarea")) return;
       if (["Delete", "Backspace"].includes(e.key) && e.target.closest(".flow-canvas")) {
         e.preventDefault();
+        if (e.target.closest(".flow-context-node")) return;
         if (selectedEdge) disconnect(selectedEdge);
         else if (selectedId) remove(selectedId);
       }
@@ -718,8 +830,10 @@
     controller = new AbortController();
     const signal = controller.signal;
     root.querySelector(".flow-palette").innerHTML = paletteHTML();
+    updatePalette();
     draw();
     refreshInspector();
+    status(dirty ? "有未保存的更改" : model().savedAt ? "已保存于 " + model().savedAt : "尚未保存");
     requestAnimationFrame(fit);
     bindCanvas(signal);
     root.addEventListener("input", (e) => {
@@ -792,7 +906,11 @@
   function action(a, el) {
     if (!a?.startsWith("flow-")) return false;
     if (["flow-check", "flow-simulate", "flow-publish", "flow-open", "flow-root", "flow-deselect", "flow-group"].includes(a) && !flushInspector()) return true;
-    if (a === "flow-group") groupDialog();
+    if (a === "flow-palette-toggle") {
+      flowUI.paletteCollapsed = !flowUI.paletteCollapsed;
+      saveUI();
+      updatePalette();
+    } else if (a === "flow-group") groupDialog();
     else if (a === "flow-save") save();
     else if (a === "flow-check") validationDialog();
     else if (a === "flow-add") {
