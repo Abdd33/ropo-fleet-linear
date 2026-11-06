@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+*.log
+*.zip
+.DS_Store
+Thumbs.db
+evidence/
+BASELINE-README.md
+VERIFICATION.md
+VISUAL-VERIFICATION.md
+LINEAR-HOME-VERIFICATION.md
+LINEAR-ALL-VERIFICATION.md
