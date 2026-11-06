@@ -83,11 +83,21 @@ function taskNote(p,phase){
 function taskDescription(p, phase) {
   return [p.id, p.type, `${p.start}–${p.end}`, p.vehicleId, phaseLabels[phase], taskNote(p, phase)].join(' · ');
 }
+// Lucide task-type icons. See LUCIDE-LICENSE.txt.
+const compactTaskIcons = {
+  '循环运行': '<path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/>',
+  '回场补能': '<path d="m11 7-3 5h4l-3 5"/><path d="M14.856 6H16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.935"/><path d="M22 14v-4"/><path d="M5.14 18H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2.936"/>',
+  '停运检修': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/>',
+};
+function compactTaskIcon(type) {
+  if (!Object.hasOwn(compactTaskIcons, type)) return '';
+  return `<svg class="dispatch-task-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${compactTaskIcons[type]}</svg>`;
+}
 function taskCard(p,lane=0){
   const phase=phaseFor(p),left=(Math.max(planStart(p),scheduleAxis.start)-scheduleAxis.start)/scheduleAxis.span*100;
   const width=(Math.min(planEnd(p),scheduleAxis.end)-Math.max(planStart(p),scheduleAxis.start))/scheduleAxis.span*100;
   const note=taskNote(p,phase);
-  return `<button class="dispatch-task ${cardTheme(p,phase)} ${p.id===F.state.selectedPlan?'is-selected':''}" data-action="schedule-select" data-id="${h(p.id)}" data-phase="${phase}" data-tooltip="${h(taskDescription(p,phase))}" style="left:${left}%;width:${Math.max(.2,width)}%;--lane:${lane}" aria-label="${h(p.vehicleId+' '+planTitle(p)+' '+p.start+' 至 '+p.end+' · '+phaseLabels[phase])}" title="${h(p.id+' · '+planTitle(p)+' · '+p.start+'–'+p.end)}"><span class="dispatch-task-top"><span class="task-phase">${phaseLabels[phase]}</span><time>${h(p.start)}–${h(p.end)}</time></span><strong>${p.type==='回场补能'?'ϟ':p.type==='停运检修'?'⚙':'◉'} ${h(planTitle(p))}</strong><small class="task-note">${h(note)}</small></button>`;
+  return `<button class="dispatch-task ${cardTheme(p,phase)} ${p.id===F.state.selectedPlan?'is-selected':''}" data-action="schedule-select" data-id="${h(p.id)}" data-phase="${phase}" data-tooltip="${h(taskDescription(p,phase))}" style="left:${left}%;width:${Math.max(.2,width)}%;--lane:${lane}" aria-label="${h(p.vehicleId+' '+planTitle(p)+' '+p.start+' 至 '+p.end+' · '+phaseLabels[phase])}" title="${h(p.id+' · '+planTitle(p)+' · '+p.start+'–'+p.end)}"><span class="dispatch-task-top"><span class="task-phase">${phaseLabels[phase]}</span><time>${h(p.start)}–${h(p.end)}</time></span><strong>${p.type==='回场补能'?'ϟ':p.type==='停运检修'?'⚙':'◉'} ${h(planTitle(p))}</strong><small class="task-note">${h(note)}</small>${compactTaskIcon(p.type)}</button>`;
 }
 function vehicleCell(v,selected,plans){
   const offline=['offline','maintenance'].includes(v.status),stateLabel=offline?'离线维护':v.id==='RT-008'&&v.status==='running'?'载客中':F.status[v.status]?.[0]||v.status;
