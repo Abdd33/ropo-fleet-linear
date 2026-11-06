@@ -45,7 +45,7 @@ body.linear-theme .segmented button:hover {color:var(--text)}
 body.linear-theme .stat-grid {gap:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:24px}
 body.linear-theme .stat-card {background:transparent;border:0;border-right:1px solid var(--line);border-radius:0;min-height:120px;padding:20px 22px;box-shadow:none;transform:none}
 body.linear-theme .stat-card:last-child {border-right:0}
-body.linear-theme .stat-card .stat-label {color:var(--muted);font-size:12px;font-weight:400}
+body.linear-theme .stat-card .stat-label {color:var(--muted);font-size:12px;font-weight:400;align-items:center;gap:8px}
 body.linear-theme .stat-card .stat-label svg {color:var(--muted);opacity:.65}
 body.linear-theme .stat-card strong {color:var(--text);font-size:34px;font-weight:600;letter-spacing:-1px;margin:15px 8px 0 0;font-variant-numeric:tabular-nums}
 body.linear-theme .stat-card small {color:var(--muted);font-size:11px}
