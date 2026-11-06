@@ -11,3 +11,90 @@
 
 .dispatch-vehicle{width:100%;text-align:left;border:0;border-radius:0;cursor:pointer}.dispatch-vehicle:hover{background:#242d3c}.dispatch-row.is-selected .dispatch-vehicle:hover{background:#27354b}.dispatch-vehicle:focus-visible{outline:2px solid #a8c4ff;outline-offset:-3px}.dispatch-vehicle .vehicle-battery{display:block}
 .plans-page .schedule-layout.inspector-collapsed{grid-template-columns:minmax(0,1fr)}
+
+/* Density changes keep the same time scale and horizontal scroll bounds. */
+.dispatch-row { height: calc(var(--lanes) * 94px + 30px); }
+.dispatch-task { top: calc(18px + var(--lane) * 94px); }
+.vehicle-compact-state, .schedule-density[hidden] { display: none; }
+.fleet-schedule-toolbar .schedule-density { display: inline-flex; flex-shrink: 0; }
+.fleet-schedule-toolbar .schedule-density[hidden] { display: none; }
+.schedule-density button { padding: 4px 9px; font-size: 12px; }
+.schedule-density button:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 2px; }
+
+body.linear-theme .plans-page.schedule-compact { --vehicle-width: 184px; }
+.schedule-compact .dispatch-grid {
+  box-sizing: border-box;
+  min-width: calc(var(--standard-vehicle-width) + var(--track-width));
+  padding-right: calc(var(--standard-vehicle-width) - var(--vehicle-width));
+}
+.schedule-compact .dispatch-heading { height: 34px; }
+.schedule-compact .dispatch-vehicle-heading { padding-inline: 10px; font-size: 11px; }
+.schedule-compact .dispatch-hours { font-size: 11px; }
+.schedule-compact .cursor-line { top: 34px; }
+.schedule-compact .dispatch-row { height: calc(38px + (var(--lanes) - 1) * 19px); }
+.schedule-compact .dispatch-vehicle { justify-content: center; padding: 0 10px; }
+.schedule-compact .dispatch-vehicle-top { gap: 6px; min-width: 0; }
+body.linear-theme .schedule-compact .dispatch-vehicle-top > strong { font-size: 12px; font-weight: 650; }
+.schedule-compact .dispatch-vehicle-top .soc { font-size: 11px; font-variant-numeric: tabular-nums; }
+.schedule-compact .vehicle-state { padding: 2px 4px; }
+.schedule-compact .vehicle-compact-state { display: inline; }
+.schedule-compact :is(.vehicle-standard-state, .dispatch-vehicle-meta, .dispatch-vehicle .vehicle-battery, .passengers) { display: none; }
+body.linear-theme .schedule-compact :is(.dispatch-grid, .dispatch-row) { background: var(--surface-1); }
+body.linear-theme .schedule-compact .dispatch-row:nth-child(even) { background: #131415; }
+body.linear-theme .schedule-compact .dispatch-row:hover .dispatch-track { background-color: #191a1b; }
+body.linear-theme .schedule-compact .dispatch-row.is-selected .dispatch-track { box-shadow: inset 2px 0 var(--accent); }
+body.linear-theme .schedule-compact .dispatch-task {
+  top: calc(11px + var(--lane) * 19px);
+  height: 15px;
+  border-radius: 4px;
+  padding: 0 3px;
+  line-height: 13px;
+  font-size: 10px;
+  container-type: inline-size;
+  background: color-mix(in srgb, currentColor 24%, #17181a);
+  box-shadow: none;
+}
+body.linear-theme .schedule-compact .dispatch-task.maintenance {
+  background: repeating-linear-gradient(45deg, #252629 0 3px, #36373a 3px 6px);
+}
+body.linear-theme .schedule-compact .dispatch-task:hover { filter: brightness(1.18); }
+body.linear-theme .schedule-compact .dispatch-task.is-selected { box-shadow: 0 0 0 1px var(--accent-hover); }
+.schedule-compact .dispatch-task > :is(strong, small), .schedule-compact .dispatch-task time { display: none; }
+.schedule-compact .dispatch-task-top { display: block; margin: 0; text-overflow: clip; }
+body.linear-theme .schedule-compact .dispatch-task .task-phase {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+body.linear-theme .schedule-compact .dispatch-task.completed { opacity: .9; }
+@container (max-width: 44px) {
+  .schedule-compact .dispatch-task-top .task-phase { display: none; }
+  .schedule-compact .dispatch-task-top::before { content: var(--compact-mark); }
+}
+.schedule-compact [data-phase="scheduled"] { --compact-mark: "·"; }
+.schedule-compact [data-phase="waiting"] { --compact-mark: "◷"; }
+.schedule-compact [data-phase="running"] { --compact-mark: "▸"; }
+.schedule-compact [data-phase="completed"] { --compact-mark: "✓"; }
+.schedule-compact [data-phase="maintenance"] { --compact-mark: "⚙"; }
+.schedule-compact [data-phase="delayed"] { --compact-mark: "!"; }
+.schedule-compact [data-phase="standby"] { --compact-mark: "Ⅱ"; }
+.schedule-compact [data-phase="cancelled"] { --compact-mark: "×"; }
+.schedule-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 8px 10px;
+  border: 1px solid #34343a;
+  border-radius: 6px;
+  background: #202124;
+  color: #f7f8f8;
+  box-shadow: 0 4px 14px #0005;
+  font: 12px/1.55 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dispatch-row { transition: height 140ms ease; }
+  .dispatch-vehicle { transition: background-color 140ms ease; }
+  .dispatch-task { transition: height 140ms ease, top 140ms ease, filter 120ms ease, border-color 120ms ease; }
+}
