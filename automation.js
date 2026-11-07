@@ -43,8 +43,13 @@
       <rect width="18" height="18" x="3" y="3" rx="2" />
     `,
   };
-  function flowIcon(kind) {
-    const shape = flowIconShapes[kind];
+  const customIcons = {
+    blocks: ['方块', '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'],
+    sliders: ['滑杆', '<path d="M3 6h5m4 0h9M3 12h11m4 0h3M3 18h3m4 0h11M8 4v4m6 2v4m-8 2v4"/>'],
+    tag: ['标签', '<path d="M20 13 13 20 4 11V4h7z"/><path d="M8 8h.01"/>'],
+  };
+  function flowIcon(kind, icon) {
+    const shape = kind === "custom" ? (customIcons[icon]?.[1] || customIcons.blocks[1]) : flowIconShapes[kind];
     if (!shape) return M.catalog[kind]?.icon || "◇";
     return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${shape}</svg>`;
   }
@@ -64,13 +69,6 @@
   function saveUI() {
     try { localStorage.setItem(uiKey, JSON.stringify(flowUI)); } catch {}
   }
-  const groupSize = { width: 248, height: 96 };
-  function groupPosition() {
-    const pos = flowUI.groupPosition;
-    if (Number.isFinite(pos?.x) && Number.isFinite(pos?.y)) return pos;
-    const start = model().graph.nodes.find(n => n.kind === "trigger");
-    return { x: start?.x ?? 20, y: (start?.y ?? 40) - groupSize.height - 24 };
-  }
   function model() {
     if (!F.state.flowV2 || F.state.flowV2.schemaVersion !== 2) F.state.flowV2 = M.create(F.state.vehicles, F.state.flow);
     return F.state.flowV2;
@@ -81,7 +79,21 @@
   const title = (n) => n.title || spec(n)?.title || n.kind;
   const outputs = (n) => spec(n)?.outputs || [];
   const quickField = (n) => (spec(n)?.fields || []).find((f) => ["threshold", "targetSoc", "minutes", "waitMinutes"].includes(f.key));
-  const baseHeight = (n) => 53 + (quickField(n) ? 52 : 0) + (n.children ? 32 : 0) + outputs(n).length * 27 + 12;
+  const customFields = n => Array.isArray(n.fields) ? n.fields : [];
+  const customSummaryHeight = n => {
+    const count = n.kind === "custom" ? customFields(n).length : 0;
+    return count ? (count > 2 && expanded.has(n.id) ? Math.min(136, 26 + count * 16) : 50) : 0;
+  };
+  function customSummary(n) {
+    const fields = customFields(n);
+    const open = fields.length > 2 && expanded.has(n.id);
+    const items = (open ? fields : fields.slice(0,2)).map(f => {
+      const value = M.customValue(f);
+      return `<span title="${h(f.name + "：" + value)}">${h(f.name)} · ${h(value)}</span>`;
+    }).join("");
+    return `<div class="flow-custom-summary" style="--summary-height:${customSummaryHeight(n)}px"><div class="flow-custom-values">${items}</div>${fields.length > 2 ? `<button type="button" data-action="flow-custom-fields" data-id="${h(n.id)}" aria-expanded="${open}">${open ? "收起字段" : `共 ${fields.length} 个字段`}</button>` : ""}</div>`;
+  }
+  const baseHeight = (n) => 53 + customSummaryHeight(n) + (quickField(n) ? 52 : 0) + (n.children ? 32 : 0) + outputs(n).length * 27 + 12;
   const inlineSteps = (n) => {
     const g = n.children;
     if (!g) return [];
@@ -103,7 +115,7 @@
     if (!expanded.has(n.id) || !n.children) return "";
     return `<div class="flow-inline-steps">${inlineSteps(n).map((c, i) => `<button class="flow-inline-child ${selectedId === c.id ? "is-selected" : ""}" data-action="flow-child" data-parent="${h(n.id)}" data-id="${h(c.id)}"><span>${String(i + 1).padStart(2, "0")}</span><strong>${h(title(c))}</strong>${(spec(c).fields || []).filter((f) => f.type === "number").map((f) => `<small>${h(f.label)} ${h(c.config[f.key])}</small>`).join("")}</button>`).join("")}</div>`;
   }
-  const outputY = (n, key) => 53 + (quickField(n) ? 52 : 0) + (n.children ? 32 : 0) + Math.max(0, outputs(n).findIndex((o) => o.key === key)) * 27 + 13.5;
+  const outputY = (n, key) => 53 + customSummaryHeight(n) + (quickField(n) ? 52 : 0) + (n.children ? 32 : 0) + Math.max(0, outputs(n).findIndex((o) => o.key === key)) * 27 + 13.5;
   const point = (n, port, key) => ({ x: n.x + (port === "output" ? 248 : 0), y: n.y + (port === "output" ? outputY(n, key) : 32) });
   const path = (a, b) => {
     const bend = Math.max(32, Math.min(180, Math.abs(b.x - a.x) * 0.45));
@@ -210,16 +222,16 @@
     const k = spec(n), q = quickField(n);
     return `<div class="flow-node ${selectedId === n.id ? "is-selected" : ""}" role="group" tabindex="${ghost ? -1 : 0}" data-node="${h(n.id)}" aria-label="${h(title(n))}，可拖动" style="left:${n.x}px;top:${n.y}px;height:${nodeHeight(n)}px;--node-color:${k.color}">
     ${n.kind !== "trigger" && n.kind !== "stepStart" ? `<button type="button" class="flow-node-port input" data-port="input" style="top:19px" aria-label="${h(title(n))} 输入端口"></button>` : ""}
-    <div class="flow-node-header"><i>${flowIcon(n.kind)}</i><span><b>${h(title(n))}</b></span></div>
+    <div class="flow-node-header"><i>${flowIcon(n.kind, n.icon)}</i><span><b>${h(title(n))}</b></span>${n.kind === "custom" ? '<small class="flow-custom-badge">自定义</small>' : ""}</div>
+    ${customSummaryHeight(n) ? customSummary(n) : ""}
 
     ${q ? `<label class="flow-node-quick"><span>${h(q.label)} <output>${h(n.config[q.key])}${["threshold", "targetSoc"].includes(q.key) ? "%" : " min"}</output></span><input type="range" data-quick="${h(q.key)}" min="${q.min ?? 1}" max="${q.max ?? 100}" step="${q.step ?? 1}" value="${h(n.config[q.key])}" aria-label="${h(title(n) + " " + q.label)}"></label>` : ""}
     ${n.children ? `<button type="button" class="flow-node-open" data-action="flow-open" data-id="${h(n.id)}">${expanded.has(n.id) ? "收起" : "展开"} ${n.children.nodes.filter((x) => !["stepStart", "stepEnd"].includes(x.kind)).length} 个子步骤 <span>${expanded.has(n.id) ? "⌃" : "⌄"}</span></button>` : ""}
     <div class="flow-node-results">${outputs(n).map((o) => `<div class="flow-node-result" data-result="${h(o.key)}" style="--result-color:${o.color || k.color}"><span>${h(o.label)}</span><button type="button" class="flow-node-port output" data-port="output" data-outcome="${h(o.key)}" style="top:${outputY(n, o.key) - 13}px" aria-label="${h(title(n) + " " + o.label + " 输出端口")}"></button></div>`).join("")}</div>${inlineHTML(n)}</div>`;
   }
   function wires() {
-    const g = graph(), pos = groupPosition();
+    const g = graph();
     const boxes = g.nodes.map(n => ({ id: n.id, left: n.x, top: n.y, right: n.x + 248, bottom: n.y + nodeHeight(n) }));
-    boxes.push({ left: pos.x, top: pos.y, right: pos.x + groupSize.width, bottom: pos.y + groupSize.height });
     return `<svg class="flow-wires" width="2400" height="1800" viewBox="0 0 2400 1800"><defs><marker id="flow-arrow-v2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L8 4L0 8Z" fill="context-stroke"/></marker></defs>${g.edges.map((e) => {
       const originalA = g.nodes.find((n) => n.id === e.from), originalB = g.nodes.find((n) => n.id === e.to);
       const a = originalA && displayNode(originalA), b = originalB && displayNode(originalB);
@@ -235,7 +247,7 @@
     if (!stage || !graph()) return;
     const editingScope = scope;
     scope = "root";
-    stage.innerHTML = wires() + model().graph.nodes.map((n) => nodeHTML(displayNode(n))).join("") + groupNodeHTML();
+    stage.innerHTML = wires() + model().graph.nodes.map((n) => nodeHTML(displayNode(n))).join("");
     scope = editingScope;
     applyView();
     updateValidation();
@@ -280,7 +292,7 @@
   }
   function fit() {
     const boxes = model().graph.nodes.map(n => ({ ...displayNode(n), width: 248, height: nodeHeight(n) }));
-    boxes.push({ ...groupPosition(), ...groupSize });
+    if (!boxes.length) return;
     const minX = Math.min(...boxes.map(n => n.x)), minY = Math.min(...boxes.map(n => n.y));
     const w = Math.max(...boxes.map(n => n.x + n.width)) - minX;
     const z = Math.max(...boxes.map(n => n.y + n.height)) - minY;
@@ -320,20 +332,123 @@
     const v = n.config?.[f.key] ?? "";
     return `<label class="flow-form-label">${h(f.label)}${f.type === "select" ? `<select data-field="${h(f.key)}" aria-label="${h(f.label)}">${f.options.map((o) => `<option value="${h(o.value)}" ${String(v) === String(o.value) ? "selected" : ""}>${h(o.label)}</option>`).join("")}</select>` : `<input type="${f.type || "number"}" data-field="${h(f.key)}" min="${f.min ?? ""}" max="${f.max ?? ""}" step="${f.step ?? 1}" value="${h(v)}" aria-label="${h(f.label)}">`}</label>`;
   }
+  function customInspector(n) {
+    const fields = customFields(n);
+    return `<label class="flow-form-label">图标<select data-custom-icon aria-label="节点图标">${Object.entries(customIcons).map(([key,[label]]) => `<option value="${key}" ${key === (n.icon || "blocks") ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+      <div class="flow-section-label">字段 <button type="button" class="btn subtle" data-action="flow-field-add">添加字段</button></div>
+      ${fields.length ? fields.map((f, index) => {
+        const error = M.customFieldError(f, fields);
+        const action = (verb, label, glyph, disabled = false) => `<button type="button" data-action="flow-field-${verb}" data-id="${h(f.id)}" aria-label="${h(label + f.name)}" title="${label}" ${disabled ? "disabled" : ""}>${glyph}</button>`;
+        return `<div class="flow-custom-field">
+          <strong>${h(f.name)}${f.required ? ' <span class="red" aria-label="必填">*</span>' : ""}</strong>
+          <small>${h(M.customTypes[f.type] || f.type)} · ${h(M.customValue(f))}</small>
+          ${f.help ? `<small>${h(f.help)}</small>` : ""}
+          ${error ? `<small class="red">${h(error)}</small>` : ""}
+          <div class="flow-field-actions">${action("edit","编辑","编辑")}${action("up","上移","↑",index === 0)}${action("down","下移","↓",index === fields.length - 1)}${action("remove","删除","删除")}</div>
+        </div>`;
+      }).join("") : '<p class="muted">暂无字段</p>'}
+      <button type="button" class="btn subtle" data-action="flow-custom-copy">复制节点</button>`;
+  }
+  function redrawCustom() {
+    const scroll = root.querySelector(".flow-inspector-body")?.scrollTop || 0;
+    changed();
+    draw();
+    refreshInspector();
+    const body = root.querySelector(".flow-inspector-body");
+    if (body) body.scrollTop = scroll;
+  }
+  function customFieldDialog(n, id) {
+    const fields = customFields(n), existing = fields.find(f => f.id === id);
+    const f = existing || { id: newId("field"), name: "", type: "text", value: "" };
+    const numberInput = (label, key, value) => `<label class="flow-form-label">${label}<input name="${key}" type="number" step="any" value="${h(value ?? "")}"></label>`;
+    const optionsFrom = text => text.trim() ? text.split(/\r?\n/).map(line => line.trim()) : [];
+    const details = type => {
+      const same = type === f.type, value = same ? f.value : "";
+      let input;
+      if (type === "select") {
+        const options = same ? (f.options || []) : [];
+        input = `<label class="flow-form-label">选项（每行一个）<textarea name="options" rows="3">${h(options.join("\n"))}</textarea></label>
+          <label class="flow-form-label">当前值<select name="value"></select></label>`;
+      } else if (type === "boolean") {
+        input = `<label class="flow-field-check"><input type="checkbox" role="switch" name="value" ${value === true ? "checked" : ""}>当前值 · 开启</label>`;
+      } else if (type === "multiline") {
+        input = `<label class="flow-form-label">当前值<textarea name="value" rows="3">${h(value ?? "")}</textarea></label>`;
+      } else if (type === "time") {
+        input = `<label class="flow-form-label">当前值<input name="value" type="time" value="${h(value ?? "")}"></label>`;
+      } else if (["number","percent","duration"].includes(type)) {
+        input = numberInput(type === "percent" ? "当前值（0–100%）" : "当前值", "value", value);
+      } else {
+        input = `<label class="flow-form-label">当前值<input name="value" value="${h(value ?? "")}"></label>`;
+      }
+      if (type === "number") input += `<div class="flow-custom-number-limits">${numberInput("最小值","min",same ? f.min : "")}${numberInput("最大值","max",same ? f.max : "")}${numberInput("步长","step",same ? f.step : "")}</div>`;
+      if (type === "duration") input += `<label class="flow-form-label">单位<select name="unit">${Object.entries(M.durationUnits).map(([key,label]) => `<option value="${key}" ${key === (same ? f.unit : "min") ? "selected" : ""}>${label}</option>`).join("")}</select></label>`;
+      else if (type !== "percent") input += `<label class="flow-form-label">单位（可选）<input name="unit" maxlength="24" value="${h(same ? f.unit || "" : "")}"></label>`;
+      return input;
+    };
+    F.modal(existing ? "编辑字段" : "添加字段", `<div class="flow-custom-form">
+      <label class="flow-form-label">字段类型<select name="type">${Object.entries(M.customTypes).map(([key,label]) => `<option value="${key}" ${key === f.type ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+      <label class="flow-form-label">字段名称<input name="name" maxlength="48" value="${h(f.name)}"></label>
+      <div class="flow-custom-field-detail"></div>
+      <label class="flow-field-check"><input type="checkbox" name="required" ${f.required ? "checked" : ""}>必填</label>
+      <label class="flow-form-label">帮助说明（可选）<textarea name="help" rows="2" maxlength="280">${h(f.help || "")}</textarea></label>
+      <p class="flow-field-error red" role="alert" hidden></p>
+      <div class="dialog-actions"><button type="button" class="btn subtle" data-action="close-modal">取消</button><button type="submit" class="btn primary">保存字段</button></div></div>`, data => {
+      const type = data.get("type"), raw = data.get("value");
+      const numeric = key => { const v = data.get(key); return v == null || v === "" ? null : Number(v); };
+      const next = {
+        id: f.id, name: data.get("name").trim(), type, required: data.has("required"),
+        value: type === "boolean" ? data.has("value") : ["number","percent","duration"].includes(type) ? numeric("value") : raw ?? "",
+        unit: (data.get("unit") || "").trim(), help: data.get("help").trim(),
+      };
+      if (type === "number") Object.assign(next,{min:numeric("min"),max:numeric("max"),step:numeric("step")});
+      if (type === "select") next.options = optionsFrom(data.get("options"));
+      // Empty required values may be saved in a draft and are reported by workflow validation.
+      const error = M.customFieldError({ ...next, required:false }, fields);
+      if (error) {
+        const message = document.querySelector(".flow-field-error");
+        message.textContent = error;
+        message.hidden = false;
+        return false;
+      }
+      const index = fields.findIndex(item => item.id === f.id);
+      if (index < 0) fields.push(next);
+      else fields[index] = next;
+      n.fields = fields;
+      redrawCustom();
+    });
+    const form = document.querySelector(".flow-custom-form");
+    const typeControl = form.querySelector('[name="type"]');
+    function showDetails() {
+      const section = form.querySelector(".flow-custom-field-detail");
+      section.innerHTML = details(typeControl.value);
+      const list = section.querySelector('[name="options"]');
+      if (!list) return;
+      const picker = section.querySelector('[name="value"]');
+      function refreshOptions(previous) {
+        const values = optionsFrom(list.value).filter(Boolean);
+        picker.replaceChildren(...[...new Set(values)].map(value => new Option(value,value)));
+        if (values.includes(previous)) picker.value = previous;
+      }
+      list.addEventListener("input", () => refreshOptions(picker.value));
+      refreshOptions(f.type === "select" ? f.value : "");
+    }
+    typeControl.addEventListener("change", showDetails);
+    showDetails();
+  }
   function inspector() {
     const n = selected();
     if (!n) return `<div class="flow-empty-selection">选择一张卡片，查看步骤和结果出口。</div>`;
     const g = graph();
     return `<header class="flow-inspector-head"><button class="flow-inspector-close" data-action="flow-deselect" aria-label="收起配置栏">×</button><span class="eyebrow">${scope === "root" ? "主流程配置" : "子步骤配置"}</span><h3>${h(title(n))}</h3><p>${h(spec(n).subtitle || "流程步骤")}</p></header><div class="flow-inspector-body">
-  <label class="flow-form-label">卡片名称<input value="${h(title(n))}" maxlength="32" data-field="title" aria-label="卡片名称"></label>
-  ${(spec(n).fields || []).map((f) => fieldHTML(n, f)).join("")}
+  <label class="flow-form-label">卡片名称<input value="${h(n.kind === "custom" ? n.title : title(n))}" maxlength="32" data-field="title" aria-label="卡片名称"></label>
+  ${n.kind === "custom" ? customInspector(n) : (spec(n).fields || []).map((f) => fieldHTML(n, f)).join("")}
   ${n.kind === "trigger" ? `<div class="flow-rule-box">${h(model().group.name)} · ${model().group.vehicleIds.length} 辆<br>${h(model().group.shiftStart)}–${h(model().group.shiftEnd)}<button class="btn subtle" data-action="flow-group">设置车组与班次</button></div>` : ""}
   ${n.children ? `<div class="flow-section-label">包含的子步骤<button class="btn subtle" data-action="flow-open" data-id="${h(n.id)}">展开 / 收起</button></div><ul class="flow-child-list">${n.children.nodes.filter((x) => !["stepStart", "stepEnd"].includes(x.kind)).map((x) => `<li>${h(title(x))}</li>`).join("")}</ul>` : ""}
   ${outputs(n).length ? `<div class="flow-section-label">结果与下一步</div>${outputs(n).map((o) => {
       const edge = g.edges.find((e) => e.from === n.id && e.outcome === o.key);
       return `<label class="flow-output-item"><span><i style="background:${o.color || spec(n).color}"></i>${h(o.label)}</span><select data-output="${h(o.key)}" aria-label="${h(o.label + " 下一步")}"><option value="">未连接</option>${g.nodes.filter((x) => x.id !== n.id && !["trigger", "stepStart"].includes(x.kind)).map((x) => `<option value="${h(x.id)}" ${edge?.to === x.id ? "selected" : ""}>${h(title(x))}</option>`).join("")}</select></label>`;
     }).join("")}` : ""}
-  </div><footer class="flow-inspector-footer"><button class="btn primary" data-action="flow-save">保存草稿</button><button class="btn subtle" data-action="flow-remove">删除卡片</button></footer>`;
+  </div><footer class="flow-inspector-footer"><button class="btn primary" data-action="flow-save">保存草稿</button><button class="btn subtle" data-action="flow-remove">${n.kind === "custom" ? "删除节点" : "删除卡片"}</button></footer>`;
   }
   function refreshInspector() {
     const el = root?.querySelector(".flow-inspector");
@@ -347,8 +462,8 @@
       const key = input.dataset.field;
       let value = input.value;
       if (key === "title") {
-        value = value.trim() || spec(n).title;
-        if (title(n) !== value) {
+        value = value.trim() || (n.kind === "custom" ? "" : spec(n).title);
+        if ((n.kind === "custom" ? n.title : title(n)) !== value) {
           n.title = value;
           modified = true;
         }
@@ -394,21 +509,16 @@
       item.hidden = !collapsed && !item.textContent.includes(root.querySelector(".flow-palette-search").value.trim());
     });
   }
-  function groupNodeHTML() {
-    const g = model().group, pos = groupPosition();
+  function assignmentHTML() {
+    const g = model().group;
     const members = F.state.vehicles.filter(v => g.vehicleIds.includes(v.id));
     const ready = members.filter(v => !["offline", "maintenance"].includes(v.status)).length;
-    return `<button type="button" class="flow-context-node" data-action="flow-group" aria-label="车组设置 · ${h(g.name)}" style="left:${pos.x}px;top:${pos.y}px;width:${groupSize.width}px;height:${groupSize.height}px">
-      <span class="flow-context-caption">${F.icon("vehicles", 15)} 车组 · ${members.length} 辆</span>
-      <strong>${h(g.name)}</strong>
-      <span class="flow-context-shift">${h(g.shiftStart)}–${h(g.shiftEnd)}</span>
-      <span class="flow-context-readiness">${ready} 辆可参与 · ${members.length - ready} 辆需检查</span>
-    </button>`;
+    return `<span class="flow-group-icon">${F.icon("vehicles", 20)}</span><div class="flow-assignment-copy"><span class="eyebrow">当前车组</span><h2>${h(g.name)} · ${members.length} 辆</h2></div><div class="flow-assignment-meta"><strong>${h(g.shiftStart)}–${h(g.shiftEnd)}</strong><span>${ready} 辆可参与 · ${members.length - ready} 辆需检查</span></div><button type="button" class="btn" data-action="flow-group">车组设置</button>`;
   }
   function render() {
     const m = model();
     return `<section class="automation-page"><header class="flow-page-head"><div><h1>自动化流程 <span class="flow-version">${m.publishedAt && !m.draft ? "已发布" : "草稿"} v2.${m.version}</span></h1></div><div class="flow-head-actions"><button class="btn" data-action="flow-check">检查流程</button><button class="btn" data-action="flow-save">保存草稿</button><button class="btn primary" data-action="flow-publish">发布演示版本</button></div></header>
-  <div class="flow-toolbar"><div class="flow-breadcrumb"><strong>主流程</strong></div><div class="flow-toolbar-actions">${F.contextHelp("canvas", "画布帮助")}<button class="btn subtle flow-exception-toggle" data-action="flow-exceptions" aria-pressed="false">显示异常连线</button><select class="flow-scenario" aria-label="模拟场景"><option value="current">按车辆当前状态</option><option value="low">低电量回场</option><option value="closing">到达收班时间</option><option value="resource">补能资源不足</option><option value="missing">车辆数据缺失</option></select><button class="btn primary" data-action="flow-simulate">▷ 车组模拟</button></div></div>
+  <section class="flow-assignment" aria-label="当前车组">${assignmentHTML()}</section><div class="flow-toolbar"><div class="flow-breadcrumb"><strong>主流程</strong></div><div class="flow-toolbar-actions">${F.contextHelp("canvas", "画布帮助")}<button class="btn subtle flow-exception-toggle" data-action="flow-exceptions" aria-pressed="false">显示异常连线</button><select class="flow-scenario" aria-label="模拟场景"><option value="current">按车辆当前状态</option><option value="low">低电量回场</option><option value="closing">到达收班时间</option><option value="resource">补能资源不足</option><option value="missing">车辆数据缺失</option></select><button class="btn primary" data-action="flow-simulate">▷ 车组模拟</button></div></div>
   <div class="flow-workspace"><aside id="flow-palette-content" class="flow-palette" aria-label="流程组件"></aside><div class="flow-canvas" tabindex="0" aria-label="自动化流程画布"><div class="flow-stage"></div><div class="flow-link-toolbar" hidden><span></span><button data-action="flow-disconnect">断开连线</button><button data-action="flow-clear-edge" aria-label="取消选中连线">×</button></div><div class="flow-canvas-bottom"><button class="flow-validation" data-action="flow-check"></button><div class="flow-controls"><button data-action="flow-zoom-out" aria-label="缩小">−</button><span class="flow-zoom-value">100%</span><button data-action="flow-zoom-in" aria-label="放大">+</button><button data-action="flow-fit" aria-label="适应画布">⛶</button></div></div><div class="flow-trash"><div class="flow-trash-zone" role="region" aria-label="节点垃圾桶">${F.icon("close", 18)}<span>拖入此处删除</span></div><button class="flow-undo-delete" data-action="flow-undo" hidden>↶ 撤销删除</button></div></div><aside class="flow-inspector"></aside></div><section class="flow-simulation" hidden></section></section>`;
   }
   function enter(next) {
@@ -439,6 +549,15 @@
   function newId(prefix) {
     return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   }
+  function placeCustom(node) {
+    const occupied = graph().nodes;
+    const start = node.x;
+    while (occupied.some(n => node.x < n.x + 268 && node.x + 268 > n.x
+      && node.y < n.y + nodeHeight(n) + 20 && node.y + nodeHeight(node) + 20 > n.y)) {
+      node.x += 284;
+      if (node.x > start + 568) { node.x = start; node.y += 160; }
+    }
+  }
   function addNode(kind, pos) {
     if (!(M.palette[scope === "root" ? "root" : model().graph.nodes.find((n2) => n2.id === scope)?.kind] || []).includes(kind)) return;
     const g = graph();
@@ -448,6 +567,7 @@
     }
     const p = pos || { x: (canvas.clientWidth / 2 - view.x) / view.scale - 124, y: (canvas.clientHeight / 2 - view.y) / view.scale - 80 };
     const n = M.createNode(kind, newId(kind), p.x, p.y);
+    if (kind === "custom" && !pos) placeCustom(n);
     g.nodes.push(n);
     changed();
     choose(n.id);
@@ -587,6 +707,7 @@
       if (i < 0) groups.push(clone(next));
       else groups[i] = clone(next);
       model().group = next;
+      root.querySelector(".flow-assignment").innerHTML = assignmentHTML();
       changed();
       draw();
       refreshInspector();
@@ -698,11 +819,6 @@
         previewLink();
         return;
       }
-      const context = e.target.closest(".flow-context-node");
-      if (context) {
-        drag = { type: "group", ...groupPosition(), px: e.clientX, py: e.clientY, pointerId: e.pointerId, target: context };
-        return;
-      }
       if (e.target.closest("button,input,select,[data-edge]")) return;
       if (node) {
         if (!flushInspector()) return;
@@ -722,7 +838,7 @@
       if (!drag || e.pointerId !== drag.pointerId) return;
       const d = drag, dx = e.clientX - d.px, dy = e.clientY - d.py;
       if (!d.moved && Math.hypot(dx, dy) < 5) return;
-      if (!d.moved && ["group", "add"].includes(d.type)) d.target.setPointerCapture(e.pointerId);
+      if (!d.moved && d.type === "add") d.target.setPointerCapture(e.pointerId);
       d.moved = true;
       canvas.classList.add("is-dragging");
       e.preventDefault();
@@ -733,10 +849,6 @@
         draw();
         root.querySelector(".flow-trash-zone").classList.add("is-active");
         root.querySelector(".flow-trash-zone").classList.toggle("is-over", inTrash(e));
-      }
-      if (d.type === "group") {
-        d.target.style.left = d.x + dx / view.scale + "px";
-        d.target.style.top = d.y + dy / view.scale + "px";
       }
       if (d.type === "pan") {
         view.x = d.x + dx;
@@ -783,15 +895,6 @@
             draw();
             refreshInspector();
           } else choose(d.id);
-        }
-      }
-      if (d.type === "group" && d.moved) {
-        if (commit) {
-          flowUI.groupPosition = { x: parseFloat(d.target.style.left), y: parseFloat(d.target.style.top) };
-          saveUI();
-        } else {
-          d.target.style.left = d.x + "px";
-          d.target.style.top = d.y + "px";
         }
       }
       if (d.type === "add" && d.moved && commit && inCanvas(e) && !inTrash(e)) {
@@ -872,7 +975,7 @@
       if (e.code === "Space") {spaceHeld = false;canvas.classList.remove("is-panning-ready");}
     }, { signal });
     canvas.addEventListener("wheel", (e) => {
-      if (e.target.closest("input,select")) return;
+      if (e.target.closest("input,select,.flow-custom-values")) return;
       e.preventDefault();
       const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, old = view.scale, next = Math.max(0.15, Math.min(2.5, old * Math.exp(-e.deltaY * 1e-3)));
       view.x = x - (x - view.x) * next / old;
@@ -899,7 +1002,6 @@
       if (e.target.matches("input,select,textarea")) return;
       if (["Delete", "Backspace"].includes(e.key) && e.target.closest(".flow-canvas")) {
         e.preventDefault();
-        if (e.target.closest(".flow-context-node")) return;
         if (selectedEdge) disconnect(selectedEdge);
         else if (selectedId) remove(selectedId);
       }
@@ -938,7 +1040,7 @@
       const fieldKey = e.target.dataset.field, editing = selected();
       if (fieldKey && editing) {
         const field = spec(editing).fields.find((f) => f.key === fieldKey);
-        if (fieldKey === "title" && e.target.value.trim()) editing.title = e.target.value.trim();
+        if (fieldKey === "title" && (editing.kind === "custom" || e.target.value.trim())) editing.title = e.target.value.trim();
         else if (field?.type === "number" && e.target.value.trim() && e.target.checkValidity()) editing.config[fieldKey] = Number(e.target.value);
         else return;
         changed();
@@ -960,7 +1062,7 @@
       const key = e.target.dataset.field, n = selected();
       if (key && n) {
         if (key === "title") {
-          n.title = e.target.value.trim() || spec(n).title;
+          n.title = e.target.value.trim() || (n.kind === "custom" ? "" : spec(n).title);
         } else {
           const field = spec(n).fields.find((f) => f.key === key);
           if (field.type === "number" && (!e.target.value.trim() || !e.target.checkValidity())) {
@@ -974,6 +1076,11 @@
         draw();
         const heading = root.querySelector(".flow-inspector-head h3");
         if (heading) heading.textContent = title(n);
+      }
+      if (e.target.matches("[data-custom-icon]") && n?.kind === "custom") {
+        n.icon = e.target.value;
+        changed();
+        draw();
       }
       const outcome = e.target.dataset.output;
       if (outcome && n) {
@@ -1004,7 +1111,46 @@
       saveUI();
       updatePalette();
     } else if (a === "flow-group") groupDialog();
-    else if (a === "flow-save") save();
+    else if (a === "flow-custom-fields") {
+      const id = el.dataset.id;
+      if (expanded.has(id)) expanded.delete(id);
+      else expanded.add(id);
+      draw();
+      stage.querySelector(`[data-action="flow-custom-fields"][data-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+    } else if (a === "flow-custom-copy") {
+      const n = selected();
+      if (n?.kind !== "custom" || !flushInspector()) return true;
+      const copy = clone(n);
+      copy.id = newId("custom");
+      copy.x += 284;
+      placeCustom(copy);
+      graph().nodes.push(copy);
+      changed();
+      choose(copy.id);
+      F.toast("已复制自定义节点");
+    } else if (a === "flow-field-add" || a === "flow-field-edit") {
+      const n = selected();
+      if (n?.kind === "custom") customFieldDialog(n, el.dataset.id);
+    } else if (a === "flow-field-remove" || a === "flow-field-up" || a === "flow-field-down") {
+      const n = selected();
+      if (n?.kind !== "custom") return true;
+      const index = n.fields.findIndex(f => f.id === el.dataset.id);
+      if (index < 0) return true;
+      if (a === "flow-field-remove") {
+        F.modal("删除字段", `<p>删除「${h(n.fields[index].name)}」及当前值？</p><div class="dialog-actions"><button type="button" class="btn subtle" data-action="close-modal">取消</button><button class="btn primary" type="submit">删除字段</button></div>`, () => {
+          n.fields.splice(index, 1);
+          redrawCustom();
+        });
+      } else {
+        const next = index + (a === "flow-field-up" ? -1 : 1);
+        if (next >= 0 && next < n.fields.length) {
+          [n.fields[index], n.fields[next]] = [n.fields[next], n.fields[index]];
+          redrawCustom();
+          const buttons = root.querySelectorAll(`[data-id="${CSS.escape(el.dataset.id)}"][data-action^="flow-field-"]`);
+          ([...buttons].find(button => button.dataset.action === a && !button.disabled) || buttons[0])?.focus();
+        }
+      }
+    } else if (a === "flow-save") save();
     else if (a === "flow-check") validationDialog();
     else if (a === "flow-add") {
       if (!flushInspector()) return true;

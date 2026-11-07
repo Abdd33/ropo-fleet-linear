@@ -12,6 +12,7 @@
   const definition = (title,subtitle,color,icon,description,outputs,fields=[]) => ({title,subtitle,color,icon,description,outputs,fields});
   const step = (title,description,color=C.cyan,fields=[]) => definition(title,'阶段内步骤',color,'·',description+'；失败由所属阶段的异常出口处理。',[out('next','完成',color)],fields);
   const catalog = {
+    custom:definition('自定义节点','自定义',C.purple,'◇','配置字段，并在演示中沿完成出口继续。',[out('done','完成',C.purple)]),
     trigger:definition('班次启动','触发',C.blue,'◷','到达车组设定的班次时间后，为成员车辆分别启动流程。',[out('next','已触发')]),
     prepare:definition('运营准备','业务阶段',C.cyan,'✓','读取车辆状态，校验运营条件和已有任务。',[out('ready','准备完成',C.cyan),out('error','检查异常',C.red)]),
     decide:definition('下一步判定','条件分支',C.amber,'⑂','先检查收班条件，再比较当前车辆电量，选择一条业务路径。',[out('operate','继续运营',C.green),out('charge','需要补能',C.purple),out('close','进入收班',C.gray),out('error','无法判定',C.red)],[number('threshold','补能触发 SOC（%）',10,50,30)]),
@@ -43,14 +44,60 @@
     charge:['stop_dispatch','settle_task','reserve_station','return_station','charge_battery','release_station'],
     close:['stop_dispatch','settle_task','return_station','close_shift']
   };
-  const palette = {root:['trigger','prepare','decide','operate','charge','close','manual','end'],manual:[]};
+  const palette = {root:['trigger','prepare','decide','operate','charge','close','manual','end','custom'],manual:[]};
   Object.entries(phaseSteps).forEach(([kind,steps])=>palette[kind]=['stepStart',...steps,'stepEnd']);
   const title = node => node.title || catalog[node.kind]?.title || node.kind;
   const minutes = value => /^\d{2}:\d{2}$/.test(String(value)) && +value.slice(0,2)<24 && +value.slice(3)<60 ? +value.slice(0,2)*60 + +value.slice(3) : NaN;
   const timeString = value => `${String(Math.floor(value/60)%24).padStart(2,'0')}:${String(value%60).padStart(2,'0')}`;
+  const customTypes = {
+    text:'单行文本', multiline:'多行文本', number:'数字', percent:'百分比',
+    boolean:'布尔开关', select:'单选项', duration:'时长', time:'时间'
+  };
+  const durationUnits = {s:'秒', min:'分钟', h:'小时'};
+  function customFieldError(field, fields = []) {
+    const {name, type, value, required, min, max, step, options, unit} = field;
+    const label = typeof name === 'string' ? name.trim() : '';
+    if (!label) return '请填写字段名称。';
+    if (fields.some(other => other.id !== field.id && typeof other.name === 'string' && other.name.trim().toLowerCase() === label.toLowerCase())) return '同一节点内字段名称不能重复。';
+    if (!Object.hasOwn(customTypes,type)) return '请选择有效的字段类型。';
+    if (type === 'select') {
+      if (!Array.isArray(options) || !options.length || options.some(o => typeof o !== 'string' || !o.trim())) return '至少填写一个有效选项，选项不能为空。';
+      if (new Set(options.map(o => o.trim())).size !== options.length) return '选项不能重复。';
+      if (!options.includes(value)) return '当前值必须是有效选项之一。';
+    }
+    if (type === 'number') {
+      if ([min,max,step].some(v => v != null && !Number.isFinite(v))) return '最小值、最大值和步长须为有效数字。';
+      if (min != null && max != null && min > max) return '最小值不能大于最大值。';
+      if (step != null && step <= 0) return '步长须大于 0。';
+    }
+    if (type === 'duration' && !Object.hasOwn(durationUnits, unit)) return '请选择秒、分钟或小时。';
+    if (type === 'boolean') return typeof value === 'boolean' ? '' : '请选择开启或关闭。';
+    if (value == null || (typeof value === 'string' && !value.trim())) return required ? '这是必填字段，请填写当前值。' : '';
+    if (['number','percent','duration'].includes(type)) {
+      if (!Number.isFinite(value)) return '当前值须为有效数字。';
+      const lower = type === 'number' ? min : 0;
+      const upper = type === 'percent' ? 100 : type === 'number' ? max : null;
+      if (lower != null && value < lower) return `当前值不能小于 ${lower}。`;
+      if (upper != null && value > upper) return `当前值不能大于 ${upper}。`;
+      if (type === 'number' && step != null) {
+        const count = (value - (min ?? 0)) / step;
+        if (Math.abs(count - Math.round(count)) > 1e-8) return `当前值须以 ${min ?? 0} 为起点，按步长 ${step} 递增。`;
+      }
+    }
+    if (type === 'time' && !Number.isFinite(minutes(value))) return '请输入有效时间（HH:mm）。';
+    if (['text','multiline'].includes(type) && typeof value !== 'string') return '当前值须为文本。';
+    return '';
+  }
+  function customValue(field) {
+    if (field.value == null || field.value === '') return '未填写';
+    if (field.type === 'boolean') return field.value ? '开启' : '关闭';
+    const unit = field.type === 'duration' ? durationUnits[field.unit] : field.type === 'percent' ? '%' : field.unit;
+    return String(field.value) + (unit ? (unit === '%' ? '%' : ' ' + unit) : '');
+  }
   function createNode(kind,id,x=40,y=40) {
     if (!catalog[kind]) throw new Error('Unknown node kind: '+kind);
     const node={id,kind,x,y,config:{}};
+    if(kind==='custom') Object.assign(node,{title:'自定义节点',icon:'blocks',fields:[]});
     catalog[kind].fields.forEach(field=>node.config[field.key]=field.default);
     if(phaseSteps[kind]) {
       const kinds=['stepStart',...phaseSteps[kind],'stepEnd'];
@@ -96,6 +143,19 @@
         const def=catalog[n.kind];
         if(!def || !allowed?.includes(n.kind)){issue(graphId,n.id,'该节点不适用于当前流程层级。');return;}
         if(graphId!=='root'&&n.children)issue(graphId,n.id,'子步骤不能再嵌套一层流程。');
+        if(n.kind==='custom') {
+          if(typeof n.title!=='string'||!n.title.trim()||n.title.trim().length>32)issue(graphId,n.id,'自定义节点名称须为 1–32 个字符。');
+          const fields = Array.isArray(n.fields) ? n.fields : [];
+          if (!Array.isArray(n.fields)) issue(graphId,n.id,`${title(n)}：字段列表无效。`);
+          const ids = new Set();
+          fields.forEach(f => {
+            if (!f || typeof f !== 'object') { issue(graphId,n.id,`${title(n)}：字段配置无效。`); return; }
+            if (!f.id || ids.has(f.id)) issue(graphId,n.id,`${title(n)}：字段编号无效或重复。`);
+            ids.add(f.id);
+            const error = customFieldError(f, fields.filter(Boolean));
+            if(error) issue(graphId,n.id,`${title(n)} · ${f.name || '未命名字段'}：${error}`);
+          });
+        }
         def.fields.forEach(field=>{const value=n.config?.[field.key];if(field.type==='number'&&(!Number.isInteger(value)||value<field.min||value>field.max))issue(graphId,n.id,`${title(n)}：${field.label}须为 ${field.min}–${field.max} 的整数。`);if(field.type==='select'&&!field.options.some(o=>o.value===value))issue(graphId,n.id,`${title(n)}：请选择有效的${field.label}。`);});
         def.outputs.forEach(output=>{const outgoing=edges.filter(e=>e.from===n.id&&e.outcome===output.key);if(outgoing.length!==1)issue(graphId,n.id,`${title(n)}的「${output.label}」出口须连接一个后续节点。`);});
         if(n.kind===entryKind&&edges.some(e=>e.to===n.id))issue(graphId,n.id,'入口节点不能接收上游连线。');
@@ -238,6 +298,9 @@
         else if(ctx.time>=shiftEnd)result={outcome:'close',message:`当前 ${timeString(ctx.time)} 已到收班时间，进入收班。`};
         else if(ctx.soc<=node.config.threshold)result={outcome:'charge',message:`SOC ${ctx.soc}% ≤ ${node.config.threshold}%，进入补能。`};
         else result={outcome:'operate',message:`SOC ${ctx.soc}% > ${node.config.threshold}%，班次有效，继续运营。`};
+      } else if(node.kind==='custom'){
+        const preview = node.fields.slice(0,2).map(f=>`${f.name}：${customValue(f).replace(/\s+/g,' ').slice(0,80)}`).join(' · ');
+        result={outcome:'done',message:'自定义演示步骤'+(preview?' · '+preview:'')+'。'};
       } else if(node.kind==='manual'){
         if(options.manualAction==='end'){terminated=true;result={outcome:'end',message:'操作员选择终止本车模拟，不再继续派生任务。'};}
         else if(!manualRecovered&&(priorRecovery||(options.manualAction==='resume'&&!approvalUsed))){record('root',node,'manual',lastFault||'等待人工核实。');recover();if(!priorRecovery)approvalUsed=true;result={outcome:'resume',message:'已模拟人工处理并确认状态恢复，沿复检连线重新检查。'};}
@@ -253,5 +316,5 @@
     }
     return finish('blocked','已达到模拟步数上限，请检查流程是否存在无法退出的循环。',ctx);
   }
-  return {catalog,palette,create,createNode,validate,simulate};
+  return {catalog,palette,create,createNode,validate,simulate,customTypes,durationUnits,customFieldError,customValue};
 });
