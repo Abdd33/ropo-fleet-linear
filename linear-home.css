@@ -133,3 +133,72 @@ body.linear-theme .help-scope {background:var(--lh-surface-raised)}
 @media(prefers-reduced-motion:reduce) {
   body.linear-theme *,body.linear-theme *::before,body.linear-theme *::after {transition:none!important;animation:none!important;scroll-behavior:auto!important}
 }
+/* Overview composition and compact, deterministic scene trend. */
+body.linear-theme .overview-head { margin-bottom: 18px; }
+.fleet-metric-grid { display:grid; grid-template-columns:minmax(360px,2.2fr) repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+.fleet-metric { min-width:0; min-height:146px; padding:14px 16px; border:1px solid var(--line); border-radius:10px; background:var(--panel); text-align:left; color:var(--text); }
+.metric-head { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:var(--muted); }
+.metric-head svg { flex-shrink:0; color:var(--muted); }
+.metric-all { padding:0; background:transparent; color:var(--muted); font-size:10px; white-space:nowrap; }
+.metric-all:hover { color:var(--text); }
+.metric-value { display:flex; align-items:baseline; gap:7px; margin-top:10px; font-variant-numeric:tabular-nums; }
+.metric-value strong { font-size:32px; font-weight:600; letter-spacing:-1px; line-height:1.1; }
+.metric-value > span { font-size:11px; color:var(--muted); }
+.fleet-state-bar { display:flex; height:9px; gap:2px; overflow:hidden; border-radius:3px; margin:11px 0 9px; }
+.fleet-state-segment { flex-basis:0; min-width:0; padding:0; background:var(--state-color); opacity:.8; border-radius:2px; }
+.fleet-state-segment:is(:hover,.is-metric-highlight) { opacity:1; box-shadow:inset 0 0 0 1px #ffffff66; }
+.fleet-state-legends { display:flex; justify-content:space-between; gap:4px 8px; flex-wrap:wrap; }
+.fleet-state-legend { display:flex; gap:4px; align-items:center; font-size:10px; color:var(--muted); background:transparent; padding:0; white-space:nowrap; }
+.fleet-state-legend b { color:var(--text); font-weight:500; font-variant-numeric:tabular-nums; }
+.fleet-state-legend:is(:hover,.is-metric-highlight) { color:var(--text); }
+.metric-dot { display:inline-block; flex:0 0 5px; width:5px; height:5px; border-radius:50%; background:var(--dot); }
+.metric-with-arc { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.metric-with-arc .metric-value { margin-top:0; }
+.metric-arc { margin-top:6px; flex-shrink:0; }
+.metric-caption { display:block; margin-top:10px; color:var(--muted); font-size:10px; line-height:1.4; }
+.metric-link { cursor:pointer; }
+.metric-link:hover { background:var(--lh-surface-hover); }
+.metric-charge-bar { display:block; height:5px; border-radius:3px; background:#27232e; overflow:hidden; margin-top:13px; }
+.metric-charge-bar i { display:block; height:100%; background:#ad90d0; }
+.metric-alert-value { color:#dc8391; }
+.metric-alert-types { display:grid; gap:4px; margin-top:11px; }
+.metric-alert-types > span { display:flex; align-items:center; gap:5px; color:var(--muted); font-size:10px; white-space:nowrap; }
+.metric-alert-types b { margin-left:auto; color:var(--text); font-weight:500; font-variant-numeric:tabular-nums; }
+.metric-empty-bar { width:100%; background:var(--line); }
+body.linear-theme .fleet-trend { height:160px; padding:11px 16px 8px; margin-bottom:18px; overflow:hidden; }
+.fleet-trend > header { display:flex; align-items:center; gap:14px; margin-bottom:6px; min-height:22px; }
+.fleet-trend h3 { margin:0; font-size:13px; font-weight:500; white-space:nowrap; }
+.fleet-trend h3 small { margin-left:8px; font-size:10px; color:var(--muted); font-weight:400; }
+.trend-legends { display:flex; gap:14px; margin-left:auto; }
+.trend-legends button { display:flex; gap:6px; align-items:center; background:transparent; color:var(--muted); padding:0; font-size:11px; }
+.trend-legends b { color:var(--text); font-size:11px; font-weight:500; font-variant-numeric:tabular-nums; }
+.trend-legends [aria-pressed="false"] { opacity:.45; }
+.trend-now { font-size:10px; color:var(--muted); white-space:nowrap; }
+.trend-plot { position:relative; height:110px; min-width:0; }
+.trend-plot svg { width:100%; height:100%; overflow:visible; }
+.trend-grid { stroke:#282a2f; stroke-width:1; vector-effect:non-scaling-stroke; }
+.trend-plot text { fill:var(--muted); font-family:inherit; font-size:10px; font-variant-numeric:tabular-nums; }
+.trend-y { text-anchor:end; }
+.trend-x { text-anchor:middle; }
+.trend-plot .trend-unit { font-size:9px; }
+.trend-line { stroke:var(--series-color); fill:none; stroke-width:1.8; vector-effect:non-scaling-stroke; }
+.trend-current { fill:var(--series-color); }
+.trend-reference { stroke:#8a8f98; stroke-width:1; stroke-dasharray:3 3; vector-effect:non-scaling-stroke; }
+.trend-reference[hidden] { display:none; }
+.trend-hit { position:absolute; left:3.2%; right:2.2%; top:0; bottom:24px; cursor:crosshair; }
+.trend-tooltip { position:absolute; z-index:3; top:3px; padding:6px 8px; background:#23252a; border:1px solid var(--lh-border-strong); border-radius:5px; color:var(--text); font-size:11px; white-space:nowrap; pointer-events:none; font-variant-numeric:tabular-nums; }
+.fleet-trend[data-highlight="running"] [data-trend-series="standby"], .fleet-trend[data-highlight="standby"] [data-trend-series="running"] { opacity:.25; }
+.overview-metric-tooltip { position:fixed; z-index:1000; padding:6px 9px; border:1px solid #34343a; border-radius:5px; background:#23252a; color:#f7f8f8; font-size:11px; pointer-events:none; font-variant-numeric:tabular-nums; }
+body.linear-theme .overview-body { gap:18px; margin-bottom:18px; }
+@media (max-width:1300px) {
+  .fleet-metric-grid { grid-template-columns:minmax(325px,2fr) repeat(3,minmax(0,1fr)); gap:10px; }
+  .fleet-metric { padding:12px; }
+  .metric-arc { width:42px; height:42px; }
+  .fleet-state-legends { gap:5px 8px; justify-content:flex-start; }
+}
+@media (max-width:1000px) {
+  .fleet-metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (prefers-reduced-motion:no-preference) {
+  .metric-link,.fleet-state-segment { transition:background 140ms ease, opacity 140ms ease; }
+}

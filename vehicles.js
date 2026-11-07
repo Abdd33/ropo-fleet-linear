@@ -6,10 +6,11 @@
   const labels = { running: '任务中', standby: '空闲', charging: '超充', maintenance: '维修', offline: '离线', waiting: '待发' };
   const groupLabels = { all: '全部', running: '任务中', standby: '待命', charging: '补能', maintenance: '维护' };
   const priority = { waiting: 0, offline: 1, maintenance: 2, charging: 3, standby: 4, running: 5 };
+  const exactLabels = {repair:'维修中', offline:'离线'};
   let root;
   const h = value => F.h(String(value ?? ''));
   const cars = () => Array.isArray(F.state.vehicles) ? F.state.vehicles : [];
-  const matchesGroup = (car, group) => group === 'all' || (group === 'standby' ? ['standby', 'waiting'].includes(car.status) : group === 'maintenance' ? ['maintenance', 'offline'].includes(car.status) : car.status === group);
+  const matchesGroup = (car, group) => group === 'all' || (group === 'repair' ? car.status === 'maintenance' : group === 'standby' ? ['standby', 'waiting'].includes(car.status) : group === 'maintenance' ? ['maintenance', 'offline'].includes(car.status) : car.status === group);
   const count = group => cars().filter(car => matchesGroup(car, group)).length;
   function filtered() {
     const query = view.query.trim().toLowerCase();
@@ -55,12 +56,12 @@
   }
   function render() {
     if (F.state.vehicleFilter) {
-      view.filter = Object.prototype.hasOwnProperty.call(groupLabels, F.state.vehicleFilter) ? F.state.vehicleFilter : 'all';
+      view.filter = (Object.hasOwn(groupLabels, F.state.vehicleFilter) || Object.hasOwn(exactLabels, F.state.vehicleFilter)) ? F.state.vehicleFilter : 'all';
       view.query = ''; view.page = 1;
       delete F.state.vehicleFilter;
     }
     return `<section class="vehicles-page"><div class="vehicle-heading"><div class="vehicle-heading-title"><h1>车辆管理</h1><div class="vehicle-summary"><span><b>${cars().length}</b> 辆</span></div></div><button class="btn primary" data-action="vehicle-create">＋ 创建计划</button></div>
-      <div class="vehicle-toolbar"><div class="vehicle-filters" role="group" aria-label="车辆状态筛选">${Object.entries(groupLabels).map(([key, label]) => `<button data-action="vehicle-filter" data-filter="${key}" class="${view.filter === key ? 'active' : ''}" aria-pressed="${view.filter === key}">${label} <span>(${count(key)})</span></button>`).join('')}</div><div class="vehicle-tools"><label class="vehicle-search"><span aria-hidden="true">⌕</span><input id="vehicle-search" type="search" placeholder="搜索车辆、车牌或位置" value="${h(view.query)}" aria-label="搜索车辆、车牌或位置" autocomplete="off"></label><div class="vehicle-view-switch" role="group" aria-label="车辆展示方式"><button data-action="vehicle-view" data-mode="grid" class="${view.mode === 'grid' ? 'active' : ''}" aria-pressed="${view.mode === 'grid'}" aria-label="网格视图" title="网格视图">▦</button><button data-action="vehicle-view" data-mode="list" class="${view.mode === 'list' ? 'active' : ''}" aria-pressed="${view.mode === 'list'}" aria-label="列表视图" title="列表视图">☷</button></div><label class="vehicle-sort">排序：<select id="vehicle-sort" aria-label="车辆排序"><option value="urgency" ${view.sort === 'urgency' ? 'selected' : ''}>响应紧急度</option><option value="soc" ${view.sort === 'soc' ? 'selected' : ''}>电量从低到高</option><option value="id" ${view.sort === 'id' ? 'selected' : ''}>车辆编号</option></select></label></div></div>
+      <div class="vehicle-toolbar"><div class="vehicle-filters" role="group" aria-label="车辆状态筛选">${Object.entries({...groupLabels, ...(Object.hasOwn(exactLabels,view.filter) ? {[view.filter]:exactLabels[view.filter]} : {})}).map(([key, label]) => `<button data-action="vehicle-filter" data-filter="${key}" class="${view.filter === key ? 'active' : ''}" aria-pressed="${view.filter === key}">${label} <span>(${count(key)})</span></button>`).join('')}</div><div class="vehicle-tools"><label class="vehicle-search"><span aria-hidden="true">⌕</span><input id="vehicle-search" type="search" placeholder="搜索车辆、车牌或位置" value="${h(view.query)}" aria-label="搜索车辆、车牌或位置" autocomplete="off"></label><div class="vehicle-view-switch" role="group" aria-label="车辆展示方式"><button data-action="vehicle-view" data-mode="grid" class="${view.mode === 'grid' ? 'active' : ''}" aria-pressed="${view.mode === 'grid'}" aria-label="网格视图" title="网格视图">▦</button><button data-action="vehicle-view" data-mode="list" class="${view.mode === 'list' ? 'active' : ''}" aria-pressed="${view.mode === 'list'}" aria-label="列表视图" title="列表视图">☷</button></div><label class="vehicle-sort">排序：<select id="vehicle-sort" aria-label="车辆排序"><option value="urgency" ${view.sort === 'urgency' ? 'selected' : ''}>响应紧急度</option><option value="soc" ${view.sort === 'soc' ? 'selected' : ''}>电量从低到高</option><option value="id" ${view.sort === 'id' ? 'selected' : ''}>车辆编号</option></select></label></div></div>
       <div class="vehicle-results" id="vehicle-results" aria-live="polite">${renderResults()}</div><footer class="vehicle-footer" id="vehicle-footer">${renderFooter()}</footer></section>`;
   }
   function updateContent() {
