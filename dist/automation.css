@@ -92,3 +92,27 @@ body.linear-theme .flow-edge.has-top-anchor.is-selected .flow-wire {
 .flow-node-result.is-connected .flow-node-port::before { background: color-mix(in srgb, currentColor 42%, var(--surface-1)); }
 .flow-node-result:is(.is-linked-highlight, .is-wire-selected) { background: color-mix(in srgb, var(--result-color) 14%, transparent); }
 .flow-node-result:is(.is-linked-highlight, .is-wire-selected) .flow-node-port::before { background: currentColor; }
+/* Custom node configuration */
+body.linear-theme .flow-assignment { min-height: 56px; padding: 9px 13px; margin-bottom: 10px; gap: 12px; }
+.flow-assignment .eyebrow { font-size: 10px; }
+.flow-assignment .flow-assignment-meta > span { white-space: nowrap; }
+.flow-custom-summary { height: var(--summary-height); flex: 0 0 var(--summary-height); display: flex; flex-direction: column; gap: 2px; justify-content: center; padding: 2px 13px; font-size: 10px; }
+.flow-custom-values { display: grid; gap: 2px; min-height: 0; overflow: auto; scrollbar-width: thin; }
+.flow-custom-values > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-custom-summary button { align-self: flex-start; padding: 0; color: var(--accent-hover); font-size: 10px; background: transparent; }
+.flow-custom-badge { color: var(--ink-muted); white-space: nowrap; }
+.flow-custom-field { min-width: 0; padding: 8px; margin-bottom: 7px; border: 1px solid var(--border); border-radius: 6px; }
+.flow-custom-field strong, .flow-custom-field small { display: block; overflow-wrap: anywhere; white-space: pre-wrap; }
+.flow-custom-field small { color: var(--ink-muted); margin-top: 4px; }
+.flow-custom-field small.red { color: var(--error); }
+.flow-field-actions { display: flex; gap: 4px; margin-top: 6px; }
+.flow-field-actions button { padding: 3px 6px; background: var(--surface-2); border-radius: 4px; font-size: 11px; }
+.flow-field-actions button:disabled { opacity: .35; }
+.flow-custom-form textarea, .flow-custom-form input:not([type="checkbox"]), .flow-custom-form select { width: 100%; min-width: 0; }
+.flow-custom-form textarea { resize: vertical; background: var(--surface-2); color: var(--ink); border: 1px solid var(--border-strong); border-radius: 5px; padding: 8px; }
+.flow-custom-number-limits { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.flow-field-check { display: flex; align-items: center; gap: 7px; margin: 8px 0 12px; }
+.flow-field-check [role="switch"] { appearance: none; width: 30px; height: 16px; border-radius: 9px; background: var(--border-strong); cursor: pointer; margin: 0; }
+.flow-field-check [role="switch"]::before { content: ""; display: block; width: 12px; height: 12px; margin: 2px; background: white; border-radius: 50%; }
+.flow-field-check [role="switch"]:checked { background: var(--accent); }
+.flow-field-check [role="switch"]:checked::before { transform: translateX(14px); }

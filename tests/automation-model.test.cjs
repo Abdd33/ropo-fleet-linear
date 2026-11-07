@@ -111,3 +111,51 @@ test('charge that finishes after shift does not reopen dispatch',()=>{
   assert.equal(r.status,'completed');assert.ok(r.trace.some(t=>t.nodeId==='decide'&&t.outcome==='close'));
   assert.ok(!r.trace.some(t=>t.title==='开放接单'));
 });
+
+test('custom steps persist independent fields and follow their connected completion path', () => {
+  const m = make();
+  const a = M.createNode('custom', 'handover', 112, 92);
+  const b = M.createNode('custom', 'review', 400, 92);
+  a.title = '交接记录';
+  a.icon = 'tag';
+  a.fields.push({id:'ticket', name:'编号', type:'text', required:true, value:'A-17'});
+  b.fields.push({id:'ticket', name:'编号', type:'text', required:true, value:'B-22'});
+  m.graph.nodes.push(a,b);
+  m.graph.edges.find(edge => edge.from === 'start').to = a.id;
+  m.graph.edges.push(
+    {id:'handover-complete', from:a.id, outcome:'done', to:b.id},
+    {id:'review-complete', from:b.id, outcome:'done', to:'prepare'},
+  );
+  const restored = JSON.parse(JSON.stringify(m));
+  assert.deepEqual(M.validate(restored, vehicles), []);
+  assert.deepEqual(restored.graph.nodes.find(n => n.id === a.id), a);
+  const result = M.simulate(restored, vehicles[0]);
+  assert.equal(result.status, 'waiting');
+  const custom = result.trace.filter(step => [a.id,b.id].includes(step.nodeId));
+  assert.deepEqual(custom.map(step => step.nodeId), [a.id,b.id]);
+  assert.match(custom[0].message, /自定义演示步骤.*A-17/);
+  assert.match(custom[1].message, /自定义演示步骤.*B-22/);
+});
+
+test('invalid custom fields and instantaneous loops block simulation with actionable issues', () => {
+  const m = make();
+  const a = M.createNode('custom', 'custom-a');
+  const b = M.createNode('custom', 'custom-b');
+  a.fields = [
+    {id:'required', name:'编号', type:'text', required:true, value:''},
+    {id:'amount', name:'人数', type:'number', value:8, max:5},
+    {id:'channel', name:'渠道', type:'select', value:'车端', options:['云端']},
+  ];
+  m.graph.nodes.push(a,b);
+  m.graph.edges.find(edge => edge.from === 'start').to = a.id;
+  m.graph.edges.push(
+    {id:'custom-a-done', from:a.id, outcome:'done', to:b.id},
+    {id:'custom-b-done', from:b.id, outcome:'done', to:a.id},
+  );
+  const problems = M.validate(m, vehicles);
+  for (const pattern of [/编号.*必填/, /人数.*不能大于 5/, /渠道.*有效选项/]) {
+    assert.ok(problems.some(issue => issue.nodeId === a.id && pattern.test(issue.message)));
+  }
+  assert.ok(problems.some(issue => issue.message.includes('即时循环')));
+  assert.equal(M.simulate(m, vehicles[0]).status, 'blocked');
+});
